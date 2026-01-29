@@ -236,3 +236,29 @@ fn ld_sp_hl() -> Result<(), String> {
     assert_eq!(context.clock.m_cycles, 3);
     Ok(())
 }
+
+#[test]
+fn ld_hl_sp_minus_e8() -> Result<(), String> {
+    let mut context = get_mock_context(vec![0xF8, 0xFF, 0xDD]);
+    context.registers.sp = 0xC100;
+    let _ = context.start_exec_cycle();
+    assert_eq!(
+        context.registers.sp - 0x1,
+        alu::read_u16(&context.registers.l, &context.registers.h)
+    );
+    assert_eq!(context.clock.m_cycles, 4);
+    Ok(())
+}
+
+#[test]
+fn ld_hl_sp_plus_e8() -> Result<(), String> {
+    let mut context = get_mock_context(vec![0xF8, 0x10, 0xDD]);
+    context.registers.sp = 0xC100;
+    let _ = context.start_exec_cycle();
+    assert_eq!(
+        context.registers.sp + 0x10,
+        alu::read_u16(&context.registers.l, &context.registers.h)
+    );
+    assert_eq!(context.clock.m_cycles, 4);
+    Ok(())
+}
