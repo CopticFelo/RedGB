@@ -1,4 +1,7 @@
-use crate::cpu::{alu, cpu_context::CpuContext, reg_file::RegFile};
+use crate::{
+    cpu::{alu, cpu_context::CpuContext, reg_file::RegFile},
+    error::GBError,
+};
 
 // the r8 param is a 3 bit param in the instruction opcode
 // it represents an 8-bit register
@@ -12,25 +15,20 @@ pub enum R8 {
 }
 
 impl R8 {
-    pub fn get_r8_param(
-        n8: bool,
-        opcode: u8,
-        index: u8,
-        context: &mut CpuContext,
-    ) -> Result<Self, String> {
+    pub fn get_r8_param(n8: bool, opcode: u8, index: u8, context: &mut CpuContext) -> Self {
         if n8 {
-            return Ok(Self::N8(context.fetch()));
+            return Self::N8(context.fetch());
         }
         let param = alu::read_bits(opcode, index, 3);
         if param == 6 {
             let addr = alu::read_u16(&context.registers.l, &context.registers.h);
-            Ok(Self::Hl(addr))
+            Self::Hl(addr)
         } else {
-            Ok(Self::Register(param))
+            Self::Register(param)
         }
     }
 
-    pub fn read(&self, context: &mut CpuContext) -> Result<u8, String> {
+    pub fn read(&self, context: &mut CpuContext) -> Result<u8, GBError> {
         match self {
             Self::Register(reg) => Ok(*context.registers.match_r8(*reg)?),
             Self::Hl(addr) => Ok(context.memory.read(&mut context.clock, *addr)?),
@@ -38,7 +36,7 @@ impl R8 {
         }
     }
 
-    pub fn write(&self, context: &mut CpuContext, value: u8) -> Result<(), String> {
+    pub fn write(&self, context: &mut CpuContext, value: u8) -> Result<(), GBError> {
         match self {
             Self::Register(reg) => {
                 *context.registers.match_r8(*reg)? = value;
@@ -78,7 +76,7 @@ pub enum R16 {
 }
 
 impl R16 {
-    pub fn new(opcode: u8, index: u8, r16type: R16Type) -> Result<Self, String> {
+    pub fn new(opcode: u8, index: u8, r16type: R16Type) -> Result<Self, GBError> {
         let param = alu::read_bits(opcode, index, 2);
         match param {
             0x0 => Ok(Self::BC),
@@ -89,7 +87,7 @@ impl R16 {
                 R16Type::R16Stk => Ok(Self::AF),
                 R16Type::R16Mem => Ok(Self::HL),
             },
-            _ => Err("Invalid paramter R16".to_owned()),
+            _ => Err(GBError::InvalidR16Operand(param)),
         }
     }
 

@@ -2,6 +2,7 @@ use std::slice;
 
 use crate::{
     cpu::{alu, clock::Clock, handlers::*, reg_file::RegFile},
+    error::GBError,
     mem::map::MemoryMap,
 };
 
@@ -33,7 +34,7 @@ impl CpuContext {
         result
     }
 
-    pub fn start_exec_cycle(&mut self) -> Result<(), String> {
+    pub fn start_exec_cycle(&mut self) -> Result<(), GBError> {
         loop {
             let opcode = self.fetch();
             print!("{:#X}: ", self.registers.pc);
@@ -66,7 +67,7 @@ impl CpuContext {
                     arithmetic::inc_r8(opcode, self, -1)?
                 } // DEC r8, DEC [hl]
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
-                    return Err(format!("Illegal operation {opcode}"));
+                    return Err(GBError::IllegalInstruction(opcode));
                 }
                 _ => print!("<unsupported>"),
             }

@@ -123,7 +123,7 @@ fn ld_bcmem_a() -> Result<(), String> {
     context.registers.a = 10;
     alu::write_u16(&mut context.registers.c, &mut context.registers.b, 0xC001);
     let _ = context.start_exec_cycle();
-    assert_eq!(context.memory.read(&mut context.clock, 0xC001)?, 10);
+    assert_eq!(context.memory.read(&mut context.clock, 0xC001).unwrap(), 10);
     assert_eq!(context.clock.m_cycles, 4);
     Ok(())
 }
@@ -134,7 +134,7 @@ fn ld_hlimem_a() -> Result<(), String> {
     context.registers.a = 10;
     alu::write_u16(&mut context.registers.l, &mut context.registers.h, 0xC001);
     let _ = context.start_exec_cycle();
-    assert_eq!(context.memory.read(&mut context.clock, 0xC001)?, 10);
+    assert_eq!(context.memory.read(&mut context.clock, 0xC001).unwrap(), 10);
     assert_eq!(
         alu::read_u16(&context.registers.l, &context.registers.h),
         0xC002
@@ -149,7 +149,7 @@ fn ld_hldmem_a() -> Result<(), String> {
     context.registers.a = 10;
     alu::write_u16(&mut context.registers.l, &mut context.registers.h, 0xC001);
     let _ = context.start_exec_cycle();
-    assert_eq!(context.memory.read(&mut context.clock, 0xC001)?, 10);
+    assert_eq!(context.memory.read(&mut context.clock, 0xC001).unwrap(), 10);
     assert_eq!(
         alu::read_u16(&context.registers.l, &context.registers.h),
         0xC001 - 1
@@ -162,7 +162,10 @@ fn ld_hldmem_a() -> Result<(), String> {
 fn ld_a_demem() -> Result<(), String> {
     let mut context = get_mock_context(vec![0x1A, 0xDD]);
     alu::write_u16(&mut context.registers.e, &mut context.registers.d, 0xC001);
-    context.memory.write(&mut context.clock, 0xC001, 18)?;
+    context
+        .memory
+        .write(&mut context.clock, 0xC001, 18)
+        .unwrap();
     let _ = context.start_exec_cycle();
     assert_eq!(context.registers.a, 18);
     assert_eq!(context.clock.m_cycles, 4);
@@ -173,7 +176,10 @@ fn ld_a_demem() -> Result<(), String> {
 fn ld_a_hlimem() -> Result<(), String> {
     let mut context = get_mock_context(vec![0x2A, 0xDD]);
     alu::write_u16(&mut context.registers.l, &mut context.registers.h, 0xC001);
-    context.memory.write(&mut context.clock, 0xC001, 18)?;
+    context
+        .memory
+        .write(&mut context.clock, 0xC001, 18)
+        .unwrap();
     let _ = context.start_exec_cycle();
     assert_eq!(context.registers.a, 18);
     assert_eq!(
@@ -188,7 +194,10 @@ fn ld_a_hlimem() -> Result<(), String> {
 fn ld_a_hldmem() -> Result<(), String> {
     let mut context = get_mock_context(vec![0x3A, 0xDD]);
     alu::write_u16(&mut context.registers.l, &mut context.registers.h, 0xC001);
-    context.memory.write(&mut context.clock, 0xC001, 18)?;
+    context
+        .memory
+        .write(&mut context.clock, 0xC001, 18)
+        .unwrap();
     let _ = context.start_exec_cycle();
     assert_eq!(context.registers.a, 18);
     assert_eq!(

@@ -1,6 +1,9 @@
-use crate::cpu::{alu::*, cpu_context::CpuContext, operands::R8, reg_file::Flag};
+use crate::{
+    cpu::{alu::*, cpu_context::CpuContext, operands::R8, reg_file::Flag},
+    error::GBError,
+};
 
-pub fn add(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
+pub fn add(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     let mut src = read_bits(opcode, 0, 3);
     let operand_str;
     if opcode == 0xC6 || opcode == 0xCE {
@@ -38,7 +41,7 @@ pub fn add(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
     Ok(())
 }
 
-pub fn sub(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
+pub fn sub(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     // FIX: This Code block right here is repeated 3 times so far
     let mut src = read_bits(opcode, 0, 3);
     let operand_str;
@@ -78,9 +81,9 @@ pub fn sub(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
 }
 
 //NOTE: Untested
-pub fn and(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
+pub fn and(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     print!("and ");
-    let r8_param = R8::get_r8_param(opcode == 0xE6, opcode, 0, context)?;
+    let r8_param = R8::get_r8_param(opcode == 0xE6, opcode, 0, context);
     let src = r8_param.read(context)?;
     r8_param.log();
     context.registers.a &= src;
@@ -91,9 +94,9 @@ pub fn and(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
 }
 
 //NOTE: Untested
-pub fn xor(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
+pub fn xor(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     print!("xor ");
-    let r8_param = R8::get_r8_param(opcode == 0xEE, opcode, 0, context)?;
+    let r8_param = R8::get_r8_param(opcode == 0xEE, opcode, 0, context);
     r8_param.log();
     let src = r8_param.read(context)?;
     context.registers.a ^= src;
@@ -104,9 +107,9 @@ pub fn xor(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
 }
 
 //NOTE: Untested
-pub fn or(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
+pub fn or(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     print!("or ");
-    let r8_param = R8::get_r8_param(opcode == 0xF6, opcode, 0, context)?;
+    let r8_param = R8::get_r8_param(opcode == 0xF6, opcode, 0, context);
     let src = r8_param.read(context)?;
     r8_param.log();
     context.registers.a |= src;
@@ -117,10 +120,10 @@ pub fn or(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
 }
 
 //NOTE: Untested
-pub fn cp(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
+pub fn cp(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     //NOTE: This code is also valid for sub, probably need to do that as well there
     print!("cp ");
-    let r8_param = R8::get_r8_param(opcode == 0xFE, opcode, 0, context)?;
+    let r8_param = R8::get_r8_param(opcode == 0xFE, opcode, 0, context);
     let subtrahend = r8_param.read(context)?;
     r8_param.log();
     let half_carry = (context.registers.a & 0xF) < (subtrahend & 0xF);
@@ -133,8 +136,8 @@ pub fn cp(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
 }
 
 /// inc r8 | inc hl | dec r8 | dec hl
-pub fn inc_r8(opcode: u8, context: &mut CpuContext, delta: i8) -> Result<(), String> {
-    let r8_param = R8::get_r8_param(false, opcode, 3, context)?;
+pub fn inc_r8(opcode: u8, context: &mut CpuContext, delta: i8) -> Result<(), GBError> {
+    let r8_param = R8::get_r8_param(false, opcode, 3, context);
     let value = r8_param.read(context)?;
     let (half_carry, zero, sub, res): (bool, bool, bool, u8);
     if delta < 0 {

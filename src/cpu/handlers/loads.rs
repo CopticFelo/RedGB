@@ -1,21 +1,24 @@
-use crate::cpu::{
-    alu,
-    cpu_context::CpuContext,
-    operands::{R8, R16, R16Type},
+use crate::{
+    cpu::{
+        alu,
+        cpu_context::CpuContext,
+        operands::{R8, R16, R16Type},
+    },
+    error::GBError,
 };
 
-pub fn load8(context: &mut CpuContext, opcode: u8) -> Result<(), String> {
+pub fn load8(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
     print!("ld ");
-    let src_param = R8::get_r8_param(alu::read_bits(opcode, 6, 1) == 0, opcode, 0, context)?;
+    let src_param = R8::get_r8_param(alu::read_bits(opcode, 6, 1) == 0, opcode, 0, context);
     let src = src_param.read(context)?;
-    let dst_param = R8::get_r8_param(false, opcode, 3, context)?;
+    let dst_param = R8::get_r8_param(false, opcode, 3, context);
     dst_param.log();
     src_param.log();
     dst_param.write(context, src)?;
     Ok(())
 }
 
-pub fn load16(context: &mut CpuContext, opcode: u8) -> Result<(), String> {
+pub fn load16(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
     let param = R16::new(opcode, 4, R16Type::R16)?;
     param.write(
         alu::read_u16(&context.fetch(), &context.fetch()),
@@ -25,7 +28,7 @@ pub fn load16(context: &mut CpuContext, opcode: u8) -> Result<(), String> {
     Ok(())
 }
 
-pub fn load_r16mem_a(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
+pub fn load_r16mem_a(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     let param = R16::new(opcode, 4, R16Type::R16Mem)?;
     let addr = param.read(&context.registers);
     context
@@ -41,7 +44,7 @@ pub fn load_r16mem_a(opcode: u8, context: &mut CpuContext) -> Result<(), String>
     Ok(())
 }
 
-pub fn load_a_r16mem(opcode: u8, context: &mut CpuContext) -> Result<(), String> {
+pub fn load_a_r16mem(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     let param = R16::new(opcode, 4, R16Type::R16Mem)?;
     let addr = param.read(&context.registers);
     let value = context.memory.read(&mut context.clock, addr)?;
@@ -57,7 +60,7 @@ pub fn load_a_r16mem(opcode: u8, context: &mut CpuContext) -> Result<(), String>
 }
 
 // NOTE: Untested
-pub fn ld_n16_sp(context: &mut CpuContext) -> Result<(), String> {
+pub fn ld_n16_sp(context: &mut CpuContext) -> Result<(), GBError> {
     print!("ld [n16] sp");
     let addr = alu::read_u16(&context.fetch(), &context.fetch());
     let lsb = (context.registers.sp & 0xFF) as u8;

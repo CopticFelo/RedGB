@@ -142,7 +142,10 @@ fn dec_hl() -> Result<(), String> {
     alu::write_u16(&mut context.registers.l, &mut context.registers.h, 0xC001);
     let _ = context.memory.write(&mut context.clock, 0xC001, 0);
     let _ = context.start_exec_cycle();
-    assert_eq!(context.memory.read(&mut context.clock, 0xC001)?, 255);
+    assert_eq!(
+        context.memory.read(&mut context.clock, 0xC001).unwrap(),
+        255
+    );
     assert_eq!(context.clock.m_cycles, 6);
     assert!(context.registers.read_flag(Flag::HalfCarry));
     assert!(!context.registers.read_flag(Flag::Zero));

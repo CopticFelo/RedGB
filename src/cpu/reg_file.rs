@@ -1,4 +1,4 @@
-use crate::cpu::alu;
+use crate::{cpu::alu, error::GBError};
 
 // TODO: Use Idiomatic rust names
 pub enum Modes {
@@ -67,7 +67,7 @@ impl RegFile {
         }
     }
 
-    pub fn match_r8(&mut self, num: u8) -> Result<&mut u8, &str> {
+    pub fn match_r8(&mut self, num: u8) -> Result<&mut u8, GBError> {
         match num {
             0x0 => Ok(&mut self.b),
             0x1 => Ok(&mut self.c),
@@ -76,17 +76,17 @@ impl RegFile {
             0x4 => Ok(&mut self.h),
             0x5 => Ok(&mut self.l),
             0x7 => Ok(&mut self.a),
-            _ => Err("Invalid r8 index"),
+            _ => Err(GBError::InvalidR8Operand(num)),
         }
     }
 
-    pub fn match_condition(&self, num: u8) -> Result<bool, &str> {
+    pub fn match_condition(&self, num: u8) -> Result<bool, GBError> {
         match num {
             0x0 => Ok(!self.read_flag(Flag::Zero)),
             0x1 => Ok(self.read_flag(Flag::Zero)),
             0x2 => Ok(!self.read_flag(Flag::Carry)),
             0x3 => Ok(self.read_flag(Flag::Carry)),
-            _ => Err("Invalid condition parameter"),
+            _ => Err(GBError::InvalidCondition(num)),
         }
     }
 
@@ -103,7 +103,7 @@ impl RegFile {
         }
     }
 
-    pub fn set_flag(&mut self, flag: Flag, value: Option<bool>) -> Result<(), String> {
+    pub fn set_flag(&mut self, flag: Flag, value: Option<bool>) -> Result<(), GBError> {
         let index = flag.bit_index();
         match value {
             Some(bit) => alu::write_bits(&mut self.f, index, 1, bit as u8)?,
@@ -118,7 +118,7 @@ impl RegFile {
     /// Takes a &[u8; 4] and sets the four flags accordingly in the following order
     /// [Z, N, H, C]
     /// see https://gbdev.io/gb-opcodes/optables/
-    pub fn set_all_flags(&mut self, flags: &[u8; 4]) -> Result<(), String> {
+    pub fn set_all_flags(&mut self, flags: &[u8; 4]) -> Result<(), GBError> {
         for (index, &bit) in flags.iter().enumerate() {
             alu::write_bits(&mut self.f, (7 - index) as u8, 1, bit)?;
         }
