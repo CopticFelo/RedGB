@@ -59,7 +59,6 @@ pub fn load_a_r16mem(opcode: u8, context: &mut CpuContext) -> Result<(), GBError
     Ok(())
 }
 
-// NOTE: Untested
 pub fn ld_n16_sp(context: &mut CpuContext) -> Result<(), GBError> {
     print!("ld [n16] sp");
     let addr = alu::read_u16(&context.fetch(), &context.fetch());
