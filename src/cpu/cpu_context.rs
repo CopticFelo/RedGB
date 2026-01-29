@@ -47,6 +47,11 @@ impl CpuContext {
                     println!("jp [hl]");
                     self.registers.pc = alu::read_u16(&self.registers.l, &self.registers.h);
                 } // JP hl
+                0xF9 => {
+                    print!("ld sp hl");
+                    self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
+                    self.clock.tick();
+                }
                 0x8 => loads::ld_n16_sp(self)?, // LD [imm16] SP
                 0x06 | 0x16 | 0x26 | 0x36 | 0x0E | 0x1E | 0x2E | 0x3E | 0x40..0x80 => {
                     loads::load8(self, opcode)?
