@@ -223,3 +223,16 @@ fn ld_n16mem_sp() -> Result<(), String> {
     assert_eq!(context.clock.m_cycles, 8);
     Ok(())
 }
+
+#[test]
+fn ld_sp_hl() -> Result<(), String> {
+    let mut context = get_mock_context(vec![0xF9, 0xDD]);
+    alu::write_u16(&mut context.registers.l, &mut context.registers.h, 0x6767);
+    let _ = context.start_exec_cycle();
+    assert_eq!(
+        context.registers.sp,
+        alu::read_u16(&context.registers.l, &context.registers.h)
+    );
+    assert_eq!(context.clock.m_cycles, 3);
+    Ok(())
+}
