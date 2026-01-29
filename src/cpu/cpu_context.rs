@@ -47,6 +47,12 @@ impl CpuContext {
                     println!("jp [hl]");
                     self.registers.pc = alu::read_u16(&self.registers.l, &self.registers.h);
                 } // JP hl
+                0xF8 => {
+                    print!("ld hl sp+e8");
+                    let value = (self.registers.sp as i16 + self.fetch() as i16) as u16;
+                    alu::write_u16(&mut self.registers.l, &mut self.registers.h, value);
+                    self.clock.tick();
+                } // LD HL SP+E8
                 0xF9 => {
                     print!("ld sp hl");
                     self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
