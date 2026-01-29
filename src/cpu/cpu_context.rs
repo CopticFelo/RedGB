@@ -49,7 +49,8 @@ impl CpuContext {
                 } // JP hl
                 0xF8 => {
                     print!("ld hl sp+e8");
-                    let value = (self.registers.sp as i16 + self.fetch() as i16) as u16;
+                    let delta = self.fetch() as i8;
+                    let value = (self.registers.sp as i16 + delta as i16) as u16;
                     alu::write_u16(&mut self.registers.l, &mut self.registers.h, value);
                     self.clock.tick();
                 } // LD HL SP+E8
