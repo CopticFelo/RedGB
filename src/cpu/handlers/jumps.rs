@@ -9,7 +9,8 @@ pub fn jmp(context: &mut CpuContext, opcode: u8, is_relative: bool) -> Result<()
     if is_relative {
         print!("jr ");
         is_conditional = opcode != 0x18;
-        target_address = (context.registers.pc as i16 + context.fetch() as i16) as u16;
+        let delta = context.fetch() as i8;
+        target_address = (context.registers.pc as i16 + delta as i16) as u16;
     } else {
         print!("jp ");
         is_conditional = opcode != 0xC3;
