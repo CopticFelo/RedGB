@@ -239,7 +239,7 @@ fn ld_sp_hl() -> Result<(), String> {
 
 #[test]
 fn ld_hl_sp_minus_e8() -> Result<(), String> {
-    let mut context = get_mock_context(vec![0xF8, 0xFF, 0xDD]);
+    let mut context = get_mock_context(vec![0xF8, 0b11111111, 0xDD]);
     context.registers.sp = 0xC100;
     let _ = context.start_exec_cycle();
     assert_eq!(
@@ -247,18 +247,27 @@ fn ld_hl_sp_minus_e8() -> Result<(), String> {
         alu::read_u16(&context.registers.l, &context.registers.h)
     );
     assert_eq!(context.clock.m_cycles, 4);
+    // TODO: write a better test
+    assert!(!context.registers.read_flag(Flag::HalfCarry));
+    assert!(!context.registers.read_flag(Flag::Carry));
+    assert!(!context.registers.read_flag(Flag::Zero));
+    assert!(!context.registers.read_flag(Flag::Subtract));
     Ok(())
 }
 
 #[test]
 fn ld_hl_sp_plus_e8() -> Result<(), String> {
     let mut context = get_mock_context(vec![0xF8, 0x10, 0xDD]);
-    context.registers.sp = 0xC100;
+    context.registers.sp = 0xC001;
     let _ = context.start_exec_cycle();
     assert_eq!(
         context.registers.sp + 0x10,
         alu::read_u16(&context.registers.l, &context.registers.h)
     );
     assert_eq!(context.clock.m_cycles, 4);
+    assert!(!context.registers.read_flag(Flag::HalfCarry));
+    assert!(!context.registers.read_flag(Flag::Carry));
+    assert!(!context.registers.read_flag(Flag::Zero));
+    assert!(!context.registers.read_flag(Flag::Subtract));
     Ok(())
 }

@@ -1,7 +1,12 @@
 use std::slice;
 
 use crate::{
-    cpu::{alu, clock::Clock, handlers::*, reg_file::RegFile},
+    cpu::{
+        alu,
+        clock::Clock,
+        handlers::{loads::ld_hl_sp_delta, *},
+        reg_file::RegFile,
+    },
     error::GBError,
     mem::map::MemoryMap,
 };
@@ -47,13 +52,7 @@ impl CpuContext {
                     println!("jp [hl]");
                     self.registers.pc = alu::read_u16(&self.registers.l, &self.registers.h);
                 } // JP hl
-                0xF8 => {
-                    print!("ld hl sp+e8");
-                    let delta = self.fetch() as i8;
-                    let value = (self.registers.sp as i16 + delta as i16) as u16;
-                    alu::write_u16(&mut self.registers.l, &mut self.registers.h, value);
-                    self.clock.tick();
-                } // LD HL SP+E8
+                0xF8 => ld_hl_sp_delta(self)?,                                       // LD HL SP+E8
                 0xF9 => {
                     print!("ld sp hl");
                     self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
