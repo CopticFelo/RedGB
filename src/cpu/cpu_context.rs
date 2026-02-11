@@ -71,13 +71,14 @@ impl CpuContext {
                 0xA8..0xB0 | 0xEE => arithmetic::xor(opcode, self)?, // XOR A, r8 | XOR A, [hl] | XOR A, imm8
                 0xB0..0xB8 | 0xF6 => arithmetic::or(opcode, self)?, // OR A, r8 | OR A, [hl] | OR A, imm8
                 0xB8..0xC0 | 0xFE => arithmetic::cp(opcode, self)?, // CP A, r8 | CP A, [hl] | CP A, imm8
+                0xC1 | 0xD1 | 0xE1 | 0xF1 => loads::pop(opcode, self)?,
+                0xC5 | 0xD5 | 0xE5 | 0xF5 => loads::push(opcode, self)?,
                 0x04 | 0x14 | 0x24 | 0x34 | 0x0C | 0x1C | 0x2C | 0x3C => {
                     arithmetic::inc_r8(opcode, self, 1)?
                 } // INC r8, INC [hl]
                 0x05 | 0x15 | 0x25 | 0x35 | 0x0D | 0x1D | 0x2D | 0x3D => {
                     arithmetic::inc_r8(opcode, self, -1)?
                 } // DEC r8, DEC [hl]
-                0xC5 | 0xD5 | 0xE5 | 0xF5 => loads::push(opcode, self)?,
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
                     return Err(GBError::IllegalInstruction(opcode));
                 }

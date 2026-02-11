@@ -104,3 +104,18 @@ pub fn push(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
         .write(&mut context.clock, context.registers.sp, lsb)?;
     Ok(())
 }
+
+pub fn pop(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
+    print!("pop r16");
+    let r16_param = R16::new(opcode, 4, R16Type::R16Stk)?;
+    let lsb = context
+        .memory
+        .read(&mut context.clock, context.registers.sp)? as u16;
+    context.registers.sp += 1;
+    let msb = context
+        .memory
+        .read(&mut context.clock, context.registers.sp)? as u16;
+    context.registers.sp += 1;
+    r16_param.write((msb << 8) | lsb, &mut context.registers);
+    Ok(())
+}
