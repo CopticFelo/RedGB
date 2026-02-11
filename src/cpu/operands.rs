@@ -101,6 +101,16 @@ impl R16 {
         }
     }
 
+    pub fn read_as_tuple(&self, reg_file: &RegFile) -> (u8, u8) {
+        match self {
+            R16::BC => (reg_file.b, reg_file.c),
+            R16::DE => (reg_file.d, reg_file.e),
+            R16::HL => (reg_file.h, reg_file.l),
+            R16::AF => (reg_file.a, reg_file.f),
+            R16::SP => ((reg_file.sp >> 8) as u8, (reg_file.sp & 0xFF) as u8),
+        }
+    }
+
     pub fn write(&self, value: u16, reg_file: &mut RegFile) {
         match self {
             R16::BC => alu::write_u16(&mut reg_file.c, &mut reg_file.b, value),
