@@ -88,3 +88,19 @@ pub fn ld_hl_sp_delta(context: &mut CpuContext) -> Result<(), GBError> {
         .set_all_flags(&[0, 0, half_carry as u8, carry as u8])?;
     Ok(())
 }
+
+pub fn push(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
+    print!("push r16");
+    let r16_param = R16::new(opcode, 4, R16Type::R16Stk)?;
+    let (msb, lsb) = r16_param.read_as_tuple(&context.registers);
+    context.clock.tick();
+    context.registers.sp -= 1;
+    context
+        .memory
+        .write(&mut context.clock, context.registers.sp, msb)?;
+    context.registers.sp -= 1;
+    context
+        .memory
+        .write(&mut context.clock, context.registers.sp, lsb)?;
+    Ok(())
+}

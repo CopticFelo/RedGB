@@ -77,6 +77,7 @@ impl CpuContext {
                 0x05 | 0x15 | 0x25 | 0x35 | 0x0D | 0x1D | 0x2D | 0x3D => {
                     arithmetic::inc_r8(opcode, self, -1)?
                 } // DEC r8, DEC [hl]
+                0xC5 | 0xD5 | 0xE5 | 0xF5 => loads::push(opcode, self)?,
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
                     return Err(GBError::IllegalInstruction(opcode));
                 }
