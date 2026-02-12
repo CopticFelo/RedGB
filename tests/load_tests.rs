@@ -271,3 +271,38 @@ fn ld_hl_sp_plus_e8() -> Result<(), String> {
     assert!(!context.registers.read_flag(Flag::Subtract));
     Ok(())
 }
+
+#[test]
+fn push_pop_af() -> Result<(), String> {
+    let mut context = get_mock_context(vec![0xF5, 0xDD, 0xF1, 0xDD]);
+    context.registers.sp = 0xC100;
+    context.registers.a = 255;
+    let _ = context.registers.set_all_flags(&[1, 0, 1, 0]);
+    let _ = context.start_exec_cycle();
+    assert_eq!(
+        context
+            .memory
+            .read(&mut context.clock, context.registers.sp)
+            .unwrap(),
+        context.registers.f
+    );
+    assert_eq!(
+        context
+            .memory
+            .read(&mut context.clock, context.registers.sp + 1)
+            .unwrap(),
+        context.registers.a
+    );
+    // 2 extra M-C for the assertion memory reads
+    assert_eq!(context.clock.m_cycles, 5 + 2);
+    context.registers.a = 123;
+    let _ = context.registers.set_all_flags(&[0, 0, 0, 0]);
+    let _ = context.start_exec_cycle();
+    assert!(context.registers.read_flag(Flag::Zero));
+    assert!(!context.registers.read_flag(Flag::Subtract));
+    assert!(context.registers.read_flag(Flag::HalfCarry));
+    assert!(!context.registers.read_flag(Flag::Carry));
+    assert_eq!(context.registers.a, 255);
+    assert_eq!(context.clock.m_cycles, 5 + 2 + 4);
+    Ok(())
+}
