@@ -58,6 +58,16 @@ impl CpuContext {
                     self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
                     self.clock.tick();
                 } // LD SP HL
+                0xE0 => {
+                    print!("ldh [a8] a");
+                    let addr = 0xFF00 + self.fetch() as u16;
+                    self.memory.write(&mut self.clock, addr, self.registers.a)?;
+                } // LDH [A8] A
+                0xF0 => {
+                    print!("ldh a [a8]");
+                    let addr = 0xFF00 + self.fetch() as u16;
+                    self.registers.a = self.memory.read(&mut self.clock, addr)?;
+                } // LDH A [A8]
                 0x8 => loads::ld_n16_sp(self)?, // LD [imm16] SP
                 0x06 | 0x16 | 0x26 | 0x36 | 0x0E | 0x1E | 0x2E | 0x3E | 0x40..0x80 => {
                     loads::load8(self, opcode)?
