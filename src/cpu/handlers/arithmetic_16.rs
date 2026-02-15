@@ -33,3 +33,17 @@ pub fn add_hl(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     context.clock.tick();
     Ok(())
 }
+
+pub fn add_sp_delta(context: &mut CpuContext) -> Result<(), GBError> {
+    let delta = context.fetch() as i8;
+    let result = context.registers.sp as i16 + delta as i16;
+    context.registers.sp = result as u16;
+    context.clock.tick();
+    let carry = (context.registers.sp & 0xFF) + (delta as u16 & 0xFF) > 0xFF;
+    let half_carry = (context.registers.sp as u8 & 0xF) + (delta as u8 & 0xF) > 0xF;
+    context
+        .registers
+        .set_all_flags(&[0, 0, half_carry as u8, carry as u8])?;
+    context.clock.tick();
+    Ok(())
+}
