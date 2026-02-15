@@ -85,6 +85,7 @@ impl CpuContext {
                 0xC5 | 0xD5 | 0xE5 | 0xF5 => loads::push(opcode, self)?, // PUSH R16
                 0x03 | 0x13 | 0x23 | 0x33 => arithmetic_16::inc_r16(opcode, self, 1)?, // INC R16
                 0x0B | 0x1B | 0x2B | 0x3B => arithmetic_16::inc_r16(opcode, self, -1)?, // DEC R16
+                0x09 | 0x19 | 0x29 | 0x39 => arithmetic_16::add_hl(opcode, self)?, // ADD HL R16
                 0x04 | 0x14 | 0x24 | 0x34 | 0x0C | 0x1C | 0x2C | 0x3C => {
                     arithmetic::inc_r8(opcode, self, 1)?
                 } // INC r8, INC [hl]
