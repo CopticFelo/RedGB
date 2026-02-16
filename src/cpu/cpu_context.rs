@@ -1,12 +1,7 @@
 use std::slice;
 
 use crate::{
-    cpu::{
-        alu,
-        clock::Clock,
-        handlers::{loads::ld_hl_sp_delta, *},
-        reg_file::RegFile,
-    },
+    cpu::{alu, clock::Clock, handlers::*, reg_file::RegFile},
     error::GBError,
     mem::map::MemoryMap,
 };
@@ -52,7 +47,7 @@ impl CpuContext {
                     println!("jp [hl]");
                     self.registers.pc = alu::read_u16(&self.registers.l, &self.registers.h);
                 } // JP hl
-                0xF8 => ld_hl_sp_delta(self)?,                                       // LD HL SP+E8
+                0xF8 => loads_16::ld_hl_sp_delta(self)?,                             // LD HL SP+E8
                 0xF9 => {
                     print!("ld sp hl");
                     self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
@@ -68,21 +63,21 @@ impl CpuContext {
                     let addr = 0xFF00 + self.fetch() as u16;
                     self.registers.a = self.memory.read(&mut self.clock, addr)?;
                 } // LDH A [A8]
-                0x8 => loads::ld_n16_sp(self)?, // LD [imm16] SP
+                0x8 => loads_16::ld_n16_sp(self)?, // LD [imm16] SP
                 0x06 | 0x16 | 0x26 | 0x36 | 0x0E | 0x1E | 0x2E | 0x3E | 0x40..0x80 => {
-                    loads::load8(self, opcode)?
+                    loads::load_r8(self, opcode)?
                 } // LD r8, r8 | LD r8, [hl] | LD [hl], r8
-                0x01 | 0x11 | 0x21 | 0x31 => loads::load16(self, opcode)?, // LD r16, imm16
-                0x02 | 0x12 | 0x22 | 0x32 => loads::load_r16mem_a(opcode, self)?, // LD [r16mem] A
-                0x0A | 0x1A | 0x2A | 0x3A => loads::load_a_r16mem(opcode, self)?, // LD A, [r16mem]
+                0x01 | 0x11 | 0x21 | 0x31 => loads_16::load_r16_imm16(self, opcode)?, // LD r16, imm16
+                0x02 | 0x12 | 0x22 | 0x32 => loads_16::load_r16mem_a(opcode, self)?, // LD [r16mem] A
+                0x0A | 0x1A | 0x2A | 0x3A => loads_16::load_a_r16mem(opcode, self)?, // LD A, [r16mem]
                 0x80..0x90 | 0xC6 | 0xCE => arithmetic::add(opcode, self)?, // ADD/ADC A, r8 | ADD/ADC A, [hl] | ADD/ADC A, imm8
                 0x90..0xA0 | 0xD6 | 0xDE => arithmetic::sub(opcode, self)?, // SUB/SBC A, r8 | SUB/SBC A, [hl] | SUB/SBC A, imm8
                 0xA0..0xA8 | 0xE6 => arithmetic::and(opcode, self)?, // AND A, r8 | AND A, [hl] | AND A, imm8
                 0xA8..0xB0 | 0xEE => arithmetic::xor(opcode, self)?, // XOR A, r8 | XOR A, [hl] | XOR A, imm8
                 0xB0..0xB8 | 0xF6 => arithmetic::or(opcode, self)?, // OR A, r8 | OR A, [hl] | OR A, imm8
                 0xB8..0xC0 | 0xFE => arithmetic::cp(opcode, self)?, // CP A, r8 | CP A, [hl] | CP A, imm8
-                0xC1 | 0xD1 | 0xE1 | 0xF1 => loads::pop(opcode, self)?, // POP R16
-                0xC5 | 0xD5 | 0xE5 | 0xF5 => loads::push(opcode, self)?, // PUSH R16
+                0xC1 | 0xD1 | 0xE1 | 0xF1 => loads_16::pop(opcode, self)?, // POP R16
+                0xC5 | 0xD5 | 0xE5 | 0xF5 => loads_16::push(opcode, self)?, // PUSH R16
                 0x03 | 0x13 | 0x23 | 0x33 => arithmetic_16::inc_r16(opcode, self, 1)?, // INC R16
                 0x0B | 0x1B | 0x2B | 0x3B => arithmetic_16::inc_r16(opcode, self, -1)?, // DEC R16
                 0x09 | 0x19 | 0x29 | 0x39 => arithmetic_16::add_hl(opcode, self)?, // ADD HL R16
