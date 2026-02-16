@@ -78,6 +78,22 @@ pub fn ld_hl_sp_delta(context: &mut CpuContext) -> Result<(), GBError> {
     Ok(())
 }
 
+pub fn ld_n16_a(context: &mut CpuContext) -> Result<(), GBError> {
+    print!("ld n16 a");
+    let addr = alu::read_u16(&context.fetch(), &context.fetch());
+    context
+        .memory
+        .write(&mut context.clock, addr, context.registers.a)?;
+    Ok(())
+}
+
+pub fn ld_a_n16(context: &mut CpuContext) -> Result<(), GBError> {
+    print!("ld a n16");
+    let addr = alu::read_u16(&context.fetch(), &context.fetch());
+    context.registers.a = context.memory.read(&mut context.clock, addr)?;
+    Ok(())
+}
+
 pub fn push(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     print!("push r16");
     let r16_param = R16::new(opcode, 4, R16Type::R16Stk)?;
