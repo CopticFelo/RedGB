@@ -63,7 +63,9 @@ pub fn call(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
 }
 
 pub fn ret(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
+    print!("ret");
     if opcode != 0xC9 || opcode != 0xD9 {
+        print!(" cc");
         context.clock.tick(&mut context.memory.io[0x44]);
         if !context
             .registers
@@ -83,6 +85,7 @@ pub fn ret(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
     let addr = alu::read_u16(&lsb, &msb);
     if opcode == 0xD9 {
         context.memory.ie = 1;
+        print!("i");
     }
     context.clock.tick(&mut context.memory.io[0x44]);
     context.registers.pc = addr;
