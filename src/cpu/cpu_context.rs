@@ -40,7 +40,15 @@ impl CpuContext {
             print!("{:#X}: ", self.registers.pc);
             print!("{:#X} -> ", opcode);
             match opcode {
-                0x0 => print!("nop"),                                                 // NOP
+                0x0 => print!("nop"), // NOP
+                0xF3 => {
+                    print!("DI");
+                    self.memory.ie = 0;
+                } // DI
+                0xFB => {
+                    print!("EI");
+                    self.memory.ie = 1;
+                } // EI
                 0xC2 | 0xD2 | 0xCA | 0xDA | 0xC3 => jumps::jmp(self, opcode, false)?, // JP cc, imm16 | JP imm16
                 0x20 | 0x30 | 0x28 | 0x38 | 0x18 => jumps::jmp(self, opcode, true)?, // JR cc, imm8 | JR imm8
                 0xC4 | 0xD4 | 0xCC | 0xDC | 0xCD => jumps::call(self, opcode)?, // CALL imm16 | CALL cc imm16
