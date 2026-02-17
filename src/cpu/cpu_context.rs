@@ -43,13 +43,13 @@ impl CpuContext {
                 0x0 => print!("nop"),                                                 // NOP
                 0xC2 | 0xD2 | 0xCA | 0xDA | 0xC3 => jumps::jmp(self, opcode, false)?, // JP cc, imm16 | JP imm16
                 0x20 | 0x30 | 0x28 | 0x38 | 0x18 => jumps::jmp(self, opcode, true)?, // JR cc, imm8 | JR imm8
-                0xC4 | 0xD4 | 0xCC | 0xDC | 0xCD => jumps::call(self, opcode)?,
-                0xD9 | 0xC9 | 0xD8 | 0xC8 | 0xD0 | 0xC0 => jumps::ret(self, opcode)?,
+                0xC4 | 0xD4 | 0xCC | 0xDC | 0xCD => jumps::call(self, opcode)?, // CALL imm16 | CALL cc imm16
+                0xD9 | 0xC9 | 0xD8 | 0xC8 | 0xD0 | 0xC0 => jumps::ret(self, opcode)?, // RET | RETI | RET cc
                 0xE9 => {
                     println!("jp [hl]");
                     self.registers.pc = alu::read_u16(&self.registers.l, &self.registers.h);
                 } // JP hl
-                0xF8 => loads_16::ld_hl_sp_delta(self)?, // LD HL SP+E8
+                0xF8 => loads_16::ld_hl_sp_delta(self)?,                              // LD HL SP+E8
                 0xF9 => {
                     print!("ld sp hl");
                     self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
@@ -75,12 +75,12 @@ impl CpuContext {
                     let addr = 0xFF00 + self.registers.c as u16;
                     self.registers.a = self.memory.read(&mut self.clock, addr)?;
                 } // LDH A [C]
-                0x8 => loads_16::ld_n16_sp(self)?,       // LD [imm16] SP
+                0x8 => loads_16::ld_n16_sp(self)?, // LD [imm16] SP
                 0x06 | 0x16 | 0x26 | 0x36 | 0x0E | 0x1E | 0x2E | 0x3E | 0x40..0x80 => {
                     loads::load_r8(self, opcode)?
                 } // LD r8, r8 | LD r8, [hl] | LD [hl], r8
-                0xEA => loads_16::ld_n16_a(self)?,       // LD [imm16] A
-                0xFA => loads_16::ld_a_n16(self)?,       // LD A [imm16]
+                0xEA => loads_16::ld_n16_a(self)?, // LD [imm16] A
+                0xFA => loads_16::ld_a_n16(self)?, // LD A [imm16]
                 0x01 | 0x11 | 0x21 | 0x31 => loads_16::load_r16_imm16(self, opcode)?, // LD r16, imm16
                 0x02 | 0x12 | 0x22 | 0x32 => loads_16::load_r16mem_a(opcode, self)?, // LD [r16mem] A
                 0x0A | 0x1A | 0x2A | 0x3A => loads_16::load_a_r16mem(opcode, self)?, // LD A, [r16mem]
