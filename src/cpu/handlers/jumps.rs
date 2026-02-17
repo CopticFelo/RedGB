@@ -30,3 +30,34 @@ pub fn jmp(context: &mut CpuContext, opcode: u8, is_relative: bool) -> Result<()
     }
     Ok(())
 }
+
+pub fn call(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
+    let target_address: u16 = alu::read_u16(&context.fetch(), &context.fetch());
+    let is_conditional: bool = opcode != 0xC3;
+    print!("call ");
+    if is_conditional {
+        print!("cc ");
+    }
+    print!("n16");
+    if context
+        .registers
+        .match_condition(alu::read_bits(opcode, 3, 2))?
+        || !is_conditional
+    {
+        context.registers.sp -= 1;
+        context.memory.write(
+            &mut context.clock,
+            context.registers.sp,
+            (context.registers.pc >> 8) as u8,
+        )?;
+        context.registers.sp -= 1;
+        context.memory.write(
+            &mut context.clock,
+            context.registers.sp,
+            (context.registers.pc & 0xFF) as u8,
+        )?;
+        context.registers.pc = target_address;
+        context.clock.tick(&mut context.memory.io[0x44]);
+    }
+    Ok(())
+}
