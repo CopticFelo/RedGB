@@ -15,7 +15,7 @@ pub struct MemoryMap {
     wram: Vec<Vec<u8>>,
     active_wram: usize,
     oam: Vec<u8>,
-    io: Vec<u8>,
+    pub io: Vec<u8>,
     hram: Vec<u8>,
     ie: u8,
 }
@@ -42,8 +42,8 @@ impl MemoryMap {
         }
     }
     /// +1 M-C (4 T-C)
-    pub fn read(&self, clock: &mut Clock, addr: u16) -> Result<u8, GBError> {
-        clock.tick();
+    pub fn read(&mut self, clock: &mut Clock, addr: u16) -> Result<u8, GBError> {
+        clock.tick(&mut self.io[0x44]);
         let addr = addr as usize;
         match addr {
             0x0000..=0x3FFF => self.rom_banks[0].get(addr),
@@ -66,7 +66,7 @@ impl MemoryMap {
     }
     /// +1 M-C (4 T-C)
     pub fn write(&mut self, clock: &mut Clock, addr: u16, value: u8) -> Result<(), GBError> {
-        clock.tick();
+        clock.tick(&mut self.io[0x44]);
         let addr = addr as usize;
         let opt_mem_ptr: Option<&mut u8> = match addr {
             0x0000..=0x3FFF => {

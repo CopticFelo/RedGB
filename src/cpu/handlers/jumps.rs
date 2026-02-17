@@ -26,7 +26,7 @@ pub fn jmp(context: &mut CpuContext, opcode: u8, is_relative: bool) -> Result<()
         || !is_conditional
     {
         context.registers.pc = target_address;
-        context.clock.tick();
+        context.clock.tick(&mut context.memory.io[0x44]);
     }
     Ok(())
 }

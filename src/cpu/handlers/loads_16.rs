@@ -71,7 +71,7 @@ pub fn ld_hl_sp_delta(context: &mut CpuContext) -> Result<(), GBError> {
     // on the open-source emulator mGBA, hopefully it's fine :>
     let carry = (context.registers.sp & 0xFF) + (delta as u16 & 0xFF) > 0xFF;
     let half_carry = (context.registers.sp as u8 & 0xF) + (delta as u8 & 0xF) > 0xF;
-    context.clock.tick();
+    context.clock.tick(&mut context.memory.io[0x44]);
     context
         .registers
         .set_all_flags(&[0, 0, half_carry as u8, carry as u8])?;
@@ -98,7 +98,7 @@ pub fn push(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     print!("push r16");
     let r16_param = R16::new(opcode, 4, R16Type::R16Stk)?;
     let (msb, lsb) = r16_param.read_as_tuple(&context.registers);
-    context.clock.tick();
+    context.clock.tick(&mut context.memory.io[0x44]);
     context.registers.sp -= 1;
     context
         .memory

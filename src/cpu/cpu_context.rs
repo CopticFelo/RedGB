@@ -51,7 +51,7 @@ impl CpuContext {
                 0xF9 => {
                     print!("ld sp hl");
                     self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
-                    self.clock.tick();
+                    self.clock.tick(&mut self.memory.io[0x44]);
                 } // LD SP HL
                 0xE0 => {
                     print!("ldh [a8] a");
