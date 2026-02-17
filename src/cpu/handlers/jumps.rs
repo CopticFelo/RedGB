@@ -91,3 +91,22 @@ pub fn ret(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
     context.registers.pc = addr;
     Ok(())
 }
+
+pub fn rst(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
+    let addr = (alu::read_bits(opcode, 3, 3) * 8) as u16;
+    context.clock.tick(&mut context.memory.io[0x44]);
+    context.registers.sp -= 1;
+    context.memory.write(
+        &mut context.clock,
+        context.registers.sp,
+        (context.registers.pc >> 8) as u8,
+    )?;
+    context.registers.sp -= 1;
+    context.memory.write(
+        &mut context.clock,
+        context.registers.sp,
+        (context.registers.pc & 0xFF) as u8,
+    )?;
+    context.registers.pc = addr;
+    Ok(())
+}
