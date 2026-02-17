@@ -17,7 +17,7 @@ pub struct MemoryMap {
     oam: Vec<u8>,
     pub io: Vec<u8>,
     hram: Vec<u8>,
-    ie: u8,
+    pub ie: u8,
 }
 
 impl MemoryMap {

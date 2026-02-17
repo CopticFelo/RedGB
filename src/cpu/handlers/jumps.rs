@@ -61,3 +61,30 @@ pub fn call(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
     }
     Ok(())
 }
+
+pub fn ret(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
+    if opcode != 0xC9 || opcode != 0xD9 {
+        context.clock.tick(&mut context.memory.io[0x44]);
+        if !context
+            .registers
+            .match_condition(alu::read_bits(opcode, 3, 2))?
+        {
+            return Ok(());
+        }
+    }
+    let lsb = context
+        .memory
+        .read(&mut context.clock, context.registers.sp)?;
+    context.registers.sp += 1;
+    let msb = context
+        .memory
+        .read(&mut context.clock, context.registers.sp)?;
+    context.registers.sp += 1;
+    let addr = alu::read_u16(&lsb, &msb);
+    if opcode == 0xD9 {
+        context.memory.ie = 1;
+    }
+    context.clock.tick(&mut context.memory.io[0x44]);
+    context.registers.pc = addr;
+    Ok(())
+}
