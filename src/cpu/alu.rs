@@ -19,9 +19,9 @@ pub fn read_bits(num: u8, index: u8, length: u8) -> u8 {
     out
 }
 
-pub fn set_bit(num: &mut u8, index: u8, bit: bool) {
+pub fn set_bit(num: u8, index: u8, bit: bool) -> u8 {
     let value = bit as u8;
-    *num |= value << index;
+    return num | (value << index);
 }
 
 pub fn write_bits(target: &mut u8, index: u8, length: u8, bits: u8) -> Result<(), GBError> {
@@ -32,6 +32,38 @@ pub fn write_bits(target: &mut u8, index: u8, length: u8, bits: u8) -> Result<()
     *target = (*target & !mask) | (bits << index);
 
     Ok(())
+}
+
+pub fn rotate_left(mut num: u8, mut carry: bool, through_carry: bool) -> (u8, bool) {
+    if through_carry {
+        let last = read_bits(num, 7, 1);
+        let c = carry;
+        num <<= 1;
+        carry = last == 1;
+        num = set_bit(num, 0, c);
+        (num, carry)
+    } else {
+        let last = read_bits(num, 7, 1);
+        num = num.rotate_left(1);
+        carry = last == 1;
+        (num, carry)
+    }
+}
+
+pub fn rotate_right(mut num: u8, mut carry: bool, through_carry: bool) -> (u8, bool) {
+    if through_carry {
+        let first = read_bits(num, 0, 1);
+        let c = carry;
+        num >>= 1;
+        carry = first == 1;
+        num = set_bit(num, 7, c);
+        (num, carry)
+    } else {
+        let first = read_bits(num, 0, 1);
+        num = num.rotate_right(1);
+        carry = first == 1;
+        (num, carry)
+    }
 }
 
 #[test]
