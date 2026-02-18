@@ -19,6 +19,11 @@ pub fn read_bits(num: u8, index: u8, length: u8) -> u8 {
     out
 }
 
+pub fn set_bit(num: &mut u8, index: u8, bit: bool) {
+    let value = bit as u8;
+    *num |= value << index;
+}
+
 pub fn write_bits(target: &mut u8, index: u8, length: u8, bits: u8) -> Result<(), GBError> {
     if index + length > 8 {
         return Err(GBError::ByteOverflow { length, index });
