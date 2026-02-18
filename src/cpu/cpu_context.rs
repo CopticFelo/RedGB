@@ -111,6 +111,26 @@ impl CpuContext {
                 0x05 | 0x15 | 0x25 | 0x35 | 0x0D | 0x1D | 0x2D | 0x3D => {
                     arithmetic::inc_r8(opcode, self, -1)?
                 } // DEC r8, DEC [hl]
+                0x17 => {
+                    print!("rla");
+                    self.registers.set_all_flags(&[
+                        0,
+                        0,
+                        0,
+                        alu::read_bits(self.registers.a, 7, 1),
+                    ])?;
+                    self.registers.a <<= 1
+                } // RLA
+                0x1F => {
+                    print!("rra");
+                    self.registers.set_all_flags(&[
+                        0,
+                        0,
+                        0,
+                        alu::read_bits(self.registers.a, 0, 1),
+                    ])?;
+                    self.registers.a >>= 1
+                } // RRA
                 0xCB => self.prefixed_instr()?,
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
                     return Err(GBError::IllegalInstruction(opcode));
