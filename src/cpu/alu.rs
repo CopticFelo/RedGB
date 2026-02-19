@@ -70,3 +70,18 @@ pub fn rotate_right(mut num: u8, mut carry: bool, through_carry: bool) -> (u8, b
 fn read_bits_test() {
     assert_eq!(read_bits(0x0E, 6, 1), 0);
 }
+
+#[test]
+fn rotate_test() {
+    let mut num = 0b10000000;
+    let mut carry = true;
+    (num, carry) = rotate_left(num, carry, true);
+    assert_eq!(num, 0b00000001);
+    assert!(carry);
+    (num, carry) = rotate_right(num, carry, true);
+    assert_eq!(num, 0b10000000);
+    assert!(carry);
+    (num, carry) = rotate_right(num, carry, false);
+    assert_eq!(num, 0b01000000);
+    assert!(!carry);
+}
