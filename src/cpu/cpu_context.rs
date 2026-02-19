@@ -111,26 +111,29 @@ impl CpuContext {
                 0x05 | 0x15 | 0x25 | 0x35 | 0x0D | 0x1D | 0x2D | 0x3D => {
                     arithmetic::inc_r8(opcode, self, -1)?
                 } // DEC r8, DEC [hl]
-                0x17 => {
-                    print!("rla");
+                0x07 | 0x17 => {
+                    let through_carry = alu::read_bits(opcode, 4, 1) == 1;
+                    print!("{} ", if through_carry { "rla" } else { "rlca" });
                     let (a, carry) = alu::rotate_left(
                         self.registers.a,
                         self.registers.read_flag(crate::cpu::reg_file::Flag::Carry),
-                        true,
+                        through_carry,
                     );
                     self.registers.a = a;
                     self.registers.set_all_flags(&[0, 0, 0, carry as u8])?;
-                } // RLA
-                0x1F => {
-                    print!("rra");
+                } // RLA | RLCA
+                0x0F | 0x1F => {
+                    let through_carry = alu::read_bits(opcode, 4, 1) == 1;
+                    print!("{} ", if through_carry { "rra" } else { "rrca" });
                     let (a, carry) = alu::rotate_right(
                         self.registers.a,
                         self.registers.read_flag(crate::cpu::reg_file::Flag::Carry),
-                        true,
+                        through_carry,
                     );
                     self.registers.a = a;
                     self.registers.set_all_flags(&[0, 0, 0, carry as u8])?;
-                } // RRA
+                } // RRA | RRCA
+                // TODO: It's probably a good idea to merge these 2 branches above ^
                 0xCB => self.prefixed_instr()?,
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
                     return Err(GBError::IllegalInstruction(opcode));
