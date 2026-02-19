@@ -113,23 +113,23 @@ impl CpuContext {
                 } // DEC r8, DEC [hl]
                 0x17 => {
                     print!("rla");
-                    self.registers.set_all_flags(&[
-                        0,
-                        0,
-                        0,
-                        alu::read_bits(self.registers.a, 7, 1),
-                    ])?;
-                    self.registers.a <<= 1
+                    let (a, carry) = alu::rotate_left(
+                        self.registers.a,
+                        self.registers.read_flag(crate::cpu::reg_file::Flag::Carry),
+                        true,
+                    );
+                    self.registers.a = a;
+                    self.registers.set_all_flags(&[0, 0, 0, carry as u8])?;
                 } // RLA
                 0x1F => {
                     print!("rra");
-                    self.registers.set_all_flags(&[
-                        0,
-                        0,
-                        0,
-                        alu::read_bits(self.registers.a, 0, 1),
-                    ])?;
-                    self.registers.a >>= 1
+                    let (a, carry) = alu::rotate_right(
+                        self.registers.a,
+                        self.registers.read_flag(crate::cpu::reg_file::Flag::Carry),
+                        true,
+                    );
+                    self.registers.a = a;
+                    self.registers.set_all_flags(&[0, 0, 0, carry as u8])?;
                 } // RRA
                 0xCB => self.prefixed_instr()?,
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {

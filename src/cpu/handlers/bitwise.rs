@@ -9,19 +9,27 @@ pub fn rotate_to_carry(opcode: u8, context: &mut CpuContext) -> Result<(), GBErr
     let r8 = r8_param.read(context)?;
     let (result, carry) = if is_left {
         print!("rl ");
-        let last = alu::read_bits(r8, 7, 1);
-        let res = r8 << 1;
-        (res, last)
+        alu::rotate_left(
+            r8,
+            context
+                .registers
+                .read_flag(crate::cpu::reg_file::Flag::Carry),
+            true,
+        )
     } else {
         print!("rr ");
-        let first = alu::read_bits(r8, 0, 1);
-        let res = r8 >> 1;
-        (res, first)
+        alu::rotate_right(
+            r8,
+            context
+                .registers
+                .read_flag(crate::cpu::reg_file::Flag::Carry),
+            true,
+        )
     };
     r8_param.log();
     r8_param.write(context, result)?;
     context
         .registers
-        .set_all_flags(&[(result == 0) as u8, 0, 0, carry])?;
+        .set_all_flags(&[(result == 0) as u8, 0, 0, carry as u8])?;
     Ok(())
 }
