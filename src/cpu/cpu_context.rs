@@ -144,7 +144,7 @@ impl CpuContext {
     fn prefixed_instr(&mut self) -> Result<(), GBError> {
         let opcode = self.fetch();
         match opcode {
-            0x10..0x20 => bitwise::rotate_to_carry(opcode, self), // RL R8 | RR R8
+            0x0..0x20 => bitwise::rotate_to_carry(opcode, self), // RL R8 | RR R8 | RLC R8 | RRC R8
             _ => Ok(()),
         }
     }

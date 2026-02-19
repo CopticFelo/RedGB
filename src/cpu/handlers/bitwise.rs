@@ -5,25 +5,26 @@ use crate::{
 
 pub fn rotate_to_carry(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     let is_left = alu::read_bits(opcode, 3, 1) == 0;
+    let through_carry = alu::read_bits(opcode, 4, 1) == 1;
     let r8_param = R8::get_r8_param(false, opcode, 0, context);
     let r8 = r8_param.read(context)?;
     let (result, carry) = if is_left {
-        print!("rl ");
+        print!("{} ", if through_carry { "rl" } else { "rlc" });
         alu::rotate_left(
             r8,
             context
                 .registers
                 .read_flag(crate::cpu::reg_file::Flag::Carry),
-            true,
+            through_carry,
         )
     } else {
-        print!("rr ");
+        print!("{} ", if through_carry { "rr" } else { "rrc" });
         alu::rotate_right(
             r8,
             context
                 .registers
                 .read_flag(crate::cpu::reg_file::Flag::Carry),
-            true,
+            through_carry,
         )
     };
     r8_param.log();
