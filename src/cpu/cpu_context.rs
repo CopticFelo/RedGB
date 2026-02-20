@@ -148,6 +148,7 @@ impl CpuContext {
         let opcode = self.fetch();
         match opcode {
             0x0..0x20 => bitwise::rotate_to_carry(opcode, self), // RL R8 | RR R8 | RLC R8 | RRC R8
+            0x20..0x30 | 0x38..0x40 => bitwise::shift_to_carry(opcode, self), // SRL R8 | SLA R8 | SRA R8
             _ => Ok(()),
         }
     }
