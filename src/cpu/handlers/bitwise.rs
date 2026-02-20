@@ -105,3 +105,14 @@ pub fn reset_bit(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     r8_param.write(context, result)?;
     Ok(())
 }
+
+pub fn set_bit(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
+    let r8_param = R8::get_r8_param(false, opcode, 0, context);
+    let r8 = r8_param.read(context)?;
+    let index = alu::read_bits(opcode, 3, 3);
+    print!("set {} ", index);
+    r8_param.log();
+    let result = alu::set_bit(r8, index, true);
+    r8_param.write(context, result)?;
+    Ok(())
+}

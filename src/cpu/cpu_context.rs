@@ -152,7 +152,7 @@ impl CpuContext {
             0x30..0x38 => bitwise::swap(opcode, self),                        // SWAP R8
             0x40..0x80 => bitwise::test_bit(opcode, self),                    // BIT U3 R8
             0x80..0xC0 => bitwise::reset_bit(opcode, self),                   // RES U3 R8
-            _ => Ok(()),
+            0xC0..=0xFF => bitwise::set_bit(opcode, self),                    // SET U3 R8
         }
     }
 }
