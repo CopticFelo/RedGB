@@ -10,4 +10,9 @@ cargo run -- path/to/rom.gb
 ```
 
 ## Things to be implemented
-Literally everything
+- [x] CPU
+- [ ] Serial port
+- [ ] PPU
+- [ ] Sound
+- [ ] Input
+- [ ] GUI
