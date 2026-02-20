@@ -155,7 +155,7 @@ impl CpuContext {
                     print!("cpl");
                     self.registers.a = !self.registers.a;
                 } // CPL
-                0x27 => arithmetic::daa(self)?,
+                0x27 => arithmetic::daa(self)?, // DAA
                 0xCB => self.prefixed_instr()?,
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
                     return Err(GBError::IllegalInstruction(opcode));
