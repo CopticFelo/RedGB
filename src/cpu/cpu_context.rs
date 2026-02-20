@@ -151,6 +151,10 @@ impl CpuContext {
                     self.registers.set_flag(Flag::HalfCarry, Some(false))?;
                     self.registers.set_flag(Flag::Subtract, Some(false))?;
                 } // CCF
+                0x2F => {
+                    print!("cpl");
+                    self.registers.a = !self.registers.a;
+                } // CPL
                 0xCB => self.prefixed_instr()?,
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
                     return Err(GBError::IllegalInstruction(opcode));
