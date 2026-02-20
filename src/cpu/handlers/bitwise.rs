@@ -64,3 +64,17 @@ pub fn shift_to_carry(opcode: u8, context: &mut CpuContext) -> Result<(), GBErro
         .set_all_flags(&[(result == 0) as u8, 0, 0, carry])?;
     Ok(())
 }
+
+pub fn swap(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
+    let r8_param = R8::get_r8_param(false, opcode, 0, context);
+    let r8 = r8_param.read(context)?;
+    print!("swap ");
+    r8_param.log();
+    let high = alu::read_bits(r8, 4, 4);
+    let result = (r8 << 4) | high;
+    r8_param.write(context, result)?;
+    context
+        .registers
+        .set_all_flags(&[(result == 0) as u8, 0, 0, 0])?;
+    Ok(())
+}
