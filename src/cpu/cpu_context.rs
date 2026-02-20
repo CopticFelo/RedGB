@@ -1,7 +1,12 @@
 use std::slice;
 
 use crate::{
-    cpu::{alu, clock::Clock, handlers::*, reg_file::RegFile},
+    cpu::{
+        alu,
+        clock::Clock,
+        handlers::*,
+        reg_file::{Flag, RegFile},
+    },
     error::GBError,
     mem::map::MemoryMap,
 };
@@ -134,6 +139,18 @@ impl CpuContext {
                     self.registers.set_all_flags(&[0, 0, 0, carry as u8])?;
                 } // RRA | RRCA
                 // TODO: It's probably a good idea to merge these 2 branches above ^
+                0x37 => {
+                    print!("scf");
+                    self.registers.set_flag(Flag::Carry, Some(true))?;
+                    self.registers.set_flag(Flag::HalfCarry, Some(false))?;
+                    self.registers.set_flag(Flag::Subtract, Some(false))?;
+                } // SCF
+                0x3F => {
+                    print!("ccf");
+                    self.registers.set_flag(Flag::Carry, None)?;
+                    self.registers.set_flag(Flag::HalfCarry, Some(false))?;
+                    self.registers.set_flag(Flag::Subtract, Some(false))?;
+                } // CCF
                 0xCB => self.prefixed_instr()?,
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
                     return Err(GBError::IllegalInstruction(opcode));
