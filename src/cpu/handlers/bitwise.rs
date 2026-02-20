@@ -1,5 +1,5 @@
 use crate::{
-    cpu::{alu, cpu_context::CpuContext, operands::R8},
+    cpu::{alu, cpu_context::CpuContext, operands::R8, reg_file::Flag},
     error::GBError,
 };
 
@@ -76,5 +76,21 @@ pub fn swap(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     context
         .registers
         .set_all_flags(&[(result == 0) as u8, 0, 0, 0])?;
+    Ok(())
+}
+
+pub fn test_bit(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
+    let r8_param = R8::get_r8_param(false, opcode, 0, context);
+    let r8 = r8_param.read(context)?;
+    let index = alu::read_bits(opcode, 3, 3);
+    print!("bit {} ", index);
+    r8_param.log();
+    let result = alu::read_bits(r8, index, 1) == 0;
+    context.registers.set_all_flags(&[
+        result as u8,
+        0,
+        1,
+        context.registers.read_flag(Flag::Carry) as u8,
+    ])?;
     Ok(())
 }
