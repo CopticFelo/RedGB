@@ -162,3 +162,39 @@ pub fn inc_r8(opcode: u8, context: &mut CpuContext, delta: i8) -> Result<(), GBE
     ])?;
     Ok(())
 }
+
+pub fn daa(context: &mut CpuContext) -> Result<(), GBError> {
+    let mut delta = 0;
+    if context.registers.read_flag(Flag::Subtract) {
+        if context.registers.read_flag(Flag::HalfCarry) {
+            delta += 0x06;
+        }
+        if context.registers.read_flag(Flag::Carry) {
+            delta += 0x60;
+        }
+        context.registers.a -= delta;
+        context.registers.set_all_flags(&[
+            (context.registers.a == 0) as u8,
+            context.registers.read_flag(Flag::Subtract) as u8,
+            0,
+            context.registers.read_flag(Flag::Carry) as u8,
+        ])?;
+    } else {
+        // NOTE: don't know if the flag calculation are correct in this function
+        if context.registers.read_flag(Flag::HalfCarry) || (context.registers.a & 0x0F) > 0x09 {
+            delta += 0x06;
+            context.registers.set_flag(Flag::Carry, Some(true))?;
+        }
+        if context.registers.read_flag(Flag::Carry) || context.registers.a > 0x99 {
+            delta += 0x60;
+        }
+        context.registers.a += delta;
+        context.registers.set_all_flags(&[
+            (context.registers.a == 0) as u8,
+            context.registers.read_flag(Flag::Subtract) as u8,
+            0,
+            context.registers.read_flag(Flag::Carry) as u8,
+        ])?;
+    }
+    Ok(())
+}
