@@ -19,7 +19,7 @@ pub fn jmp(context: &mut CpuContext, opcode: u8, is_relative: bool) -> Result<()
     if is_conditional {
         print!("cc ");
     }
-    print!("n16");
+    print!("{:#X}", target_address);
     if context
         .registers
         .match_condition(alu::read_bits(opcode, 3, 2))?

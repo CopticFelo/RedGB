@@ -3,6 +3,8 @@ use crate::{
     error::GBError,
 };
 
+const REG_NAMES: [&str; 8] = ["b", "c", "d", "e", "h", "l", "", "a"];
+
 // the r8 param is a 3 bit param in the instruction opcode
 // it represents an 8-bit register
 // or the memory value (8-bit) pointed to by the 16-bit hl register
@@ -53,9 +55,9 @@ impl R8 {
     //TODO: implement a better logging system
     pub fn log(&self) {
         match self {
-            Self::Register(_) => print!("r8 "),
-            Self::Hl(_) => print!("[hl] "),
-            Self::N8(_) => print!("imm8 "),
+            Self::Register(reg) => print!("{} ", REG_NAMES[*reg as usize]),
+            Self::Hl(addr) => print!("[{:#X}] ", addr),
+            Self::N8(n8) => print!("{:#X} ", n8),
         }
     }
 }
