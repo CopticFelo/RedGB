@@ -9,6 +9,7 @@ use crate::{
 };
 
 pub fn inc_r16(opcode: u8, context: &mut CpuContext, delta: i8) -> Result<(), GBError> {
+    print!("{}", if delta < 0 { "dec r16" } else { "inc r16" });
     let r16_param = R16::new(opcode, 4, R16Type::R16)?;
     let r16 = r16_param.read(&context.registers);
     let result = r16 as i16 + delta as i16;
@@ -18,6 +19,7 @@ pub fn inc_r16(opcode: u8, context: &mut CpuContext, delta: i8) -> Result<(), GB
 }
 
 pub fn add_hl(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
+    print!("add hl");
     let r16_param = R16::new(opcode, 4, R16Type::R16)?;
     let r16 = r16_param.read(&context.registers);
     let hl = alu::read_u16(&context.registers.l, &context.registers.h);
@@ -35,6 +37,7 @@ pub fn add_hl(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
 }
 
 pub fn add_sp_delta(context: &mut CpuContext) -> Result<(), GBError> {
+    print!("add sp+e8");
     let delta = context.fetch() as i8;
     let result = context.registers.sp as i16 + delta as i16;
     context.registers.sp = result as u16;
