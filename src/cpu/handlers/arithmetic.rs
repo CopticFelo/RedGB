@@ -1,6 +1,7 @@
 use crate::{
     cpu::{alu::*, cpu_context::CpuContext, operands::R8, reg_file::Flag},
     error::GBError,
+    mem::map::MemoryMap,
 };
 
 pub fn add(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
@@ -10,8 +11,8 @@ pub fn add(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
         src = context.fetch();
         operand_str = "imm8";
     } else if src == 6 {
-        src = context.memory.read(
-            &mut context.clock,
+        src = MemoryMap::read(
+            context,
             read_u16(&context.registers.l, &context.registers.h),
         )?;
         operand_str = "[hl]";
@@ -49,8 +50,8 @@ pub fn sub(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
         src = context.fetch();
         operand_str = "imm8";
     } else if src == 6 {
-        src = context.memory.read(
-            &mut context.clock,
+        src = MemoryMap::read(
+            context,
             read_u16(&context.registers.l, &context.registers.h),
         )?;
         operand_str = "[hl]";

@@ -3,7 +3,6 @@ use std::slice;
 use crate::{
     cpu::{
         alu,
-        clock::Clock,
         handlers::*,
         reg_file::{Flag, RegFile},
     },
@@ -14,20 +13,30 @@ use crate::{
 pub struct CpuContext {
     pub registers: RegFile,
     pub memory: MemoryMap,
-    pub clock: Clock,
+    t_cycles: u64,
 }
 
 impl CpuContext {
-    pub fn init(registers: RegFile, memory: MemoryMap, clock: Clock) -> Self {
+    pub fn init(registers: RegFile, memory: MemoryMap) -> Self {
         Self {
             registers,
             memory,
-            clock,
+            t_cycles: 0,
+        }
+    }
+
+    pub fn tick(&mut self) {
+        self.t_cycles += 4_u64;
+
+        // V-Blank
+        // HACK: probably will change later
+        if self.t_cycles.is_multiple_of(456) {
+            self.memory.io[0x44] = self.memory.io[0x44].wrapping_add(1);
         }
     }
 
     pub fn fetch(&mut self) -> u8 {
-        let result = match self.memory.read(&mut self.clock, self.registers.pc) {
+        let result = match MemoryMap::read(self, self.registers.pc) {
             Ok(op) => op,
             // HACK: Probably improper error handling
             Err(s) => {
@@ -73,30 +82,30 @@ impl CpuContext {
                 0xF9 => {
                     print!("ld sp hl");
                     self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
-                    self.clock.tick(&mut self.memory.io[0x44]);
+                    self.tick();
                     Ok(())
                 } // LD SP HL
                 0xE0 => {
                     print!("ldh [a8] a");
                     let addr = 0xFF00 + self.fetch() as u16;
-                    self.memory.write(&mut self.clock, addr, self.registers.a)
+                    MemoryMap::write(self, addr, self.registers.a)
                 } // LDH [A8] A
                 0xF0 => {
                     print!("ldh a [a8]");
                     let addr = 0xFF00 + self.fetch() as u16;
-                    self.registers.a = self.memory.read(&mut self.clock, addr)?;
+                    self.registers.a = MemoryMap::read(self, addr)?;
                     Ok(())
                 } // LDH A [A8]
                 0xE2 => {
                     print!("ldh [C] a");
                     let addr = 0xFF00 + self.registers.c as u16;
-                    self.memory.write(&mut self.clock, addr, self.registers.a)?;
+                    MemoryMap::write(self, addr, self.registers.a)?;
                     Ok(())
                 } // LDH [C] A
                 0xF2 => {
                     print!("ldh a [C]");
                     let addr = 0xFF00 + self.registers.c as u16;
-                    self.registers.a = self.memory.read(&mut self.clock, addr)?;
+                    self.registers.a = MemoryMap::read(self, addr)?;
                     Ok(())
                 } // LDH A [C]
                 0x8 => loads_16::ld_n16_sp(self),       // LD [imm16] SP
@@ -193,23 +202,15 @@ impl CpuContext {
             {
                 self.registers.ime = false;
                 self.memory.io[0x0F] = alu::set_bit(self.memory.io[0x0F], i, false);
-                self.clock.tick(&mut self.memory.io[0x44]);
-                self.clock.tick(&mut self.memory.io[0x44]);
+                self.tick();
+                self.tick();
                 let target_address = (0x40 + 8 * i) as u16;
                 self.registers.sp -= 1;
-                self.memory.write(
-                    &mut self.clock,
-                    self.registers.sp,
-                    (self.registers.pc >> 8) as u8,
-                )?;
+                MemoryMap::write(self, self.registers.sp, (self.registers.pc >> 8) as u8)?;
                 self.registers.sp -= 1;
-                self.memory.write(
-                    &mut self.clock,
-                    self.registers.sp,
-                    (self.registers.pc & 0xFF) as u8,
-                )?;
+                MemoryMap::write(self, self.registers.sp, (self.registers.pc & 0xFF) as u8)?;
                 self.registers.pc = target_address;
-                self.clock.tick(&mut self.memory.io[0x44]);
+                self.tick();
                 break;
             }
         }

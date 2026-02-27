@@ -5,6 +5,7 @@ use crate::{
         operands::{R16, R16Type},
     },
     error::GBError,
+    mem::map::MemoryMap,
 };
 
 pub fn load_r16_imm16(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
@@ -20,9 +21,7 @@ pub fn load_r16_imm16(context: &mut CpuContext, opcode: u8) -> Result<(), GBErro
 pub fn load_r16mem_a(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     let param = R16::new(opcode, 4, R16Type::R16Mem)?;
     let addr = param.read(&context.registers);
-    context
-        .memory
-        .write(&mut context.clock, addr, context.registers.a)?;
+    MemoryMap::write(context, addr, context.registers.a)?;
     let raw_param = alu::read_bits(opcode, 4, 2);
     if raw_param == 0x2 {
         param.write(addr + 1, &mut context.registers);
@@ -36,7 +35,7 @@ pub fn load_r16mem_a(opcode: u8, context: &mut CpuContext) -> Result<(), GBError
 pub fn load_a_r16mem(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     let param = R16::new(opcode, 4, R16Type::R16Mem)?;
     let addr = param.read(&context.registers);
-    let value = context.memory.read(&mut context.clock, addr)?;
+    let value = MemoryMap::read(context, addr)?;
     context.registers.a = value;
     let raw_param = alu::read_bits(opcode, 4, 2);
     if raw_param == 0x2 {
@@ -53,8 +52,8 @@ pub fn ld_n16_sp(context: &mut CpuContext) -> Result<(), GBError> {
     let addr = alu::read_u16(&context.fetch(), &context.fetch());
     let lsb = (context.registers.sp & 0xFF) as u8;
     let msb = (context.registers.sp >> 8) as u8;
-    context.memory.write(&mut context.clock, addr, lsb)?;
-    context.memory.write(&mut context.clock, addr + 1, msb)?;
+    MemoryMap::write(context, addr, lsb)?;
+    MemoryMap::write(context, addr + 1, msb)?;
     Ok(())
 }
 
@@ -71,7 +70,7 @@ pub fn ld_hl_sp_delta(context: &mut CpuContext) -> Result<(), GBError> {
     // on the open-source emulator mGBA, hopefully it's fine :>
     let carry = (context.registers.sp & 0xFF) + (delta as u16 & 0xFF) > 0xFF;
     let half_carry = (context.registers.sp as u8 & 0xF) + (delta as u8 & 0xF) > 0xF;
-    context.clock.tick(&mut context.memory.io[0x44]);
+    context.tick();
     context
         .registers
         .set_all_flags(&[0, 0, half_carry as u8, carry as u8])?;
@@ -81,16 +80,14 @@ pub fn ld_hl_sp_delta(context: &mut CpuContext) -> Result<(), GBError> {
 pub fn ld_n16_a(context: &mut CpuContext) -> Result<(), GBError> {
     print!("ld n16 a");
     let addr = alu::read_u16(&context.fetch(), &context.fetch());
-    context
-        .memory
-        .write(&mut context.clock, addr, context.registers.a)?;
+    MemoryMap::write(context, addr, context.registers.a)?;
     Ok(())
 }
 
 pub fn ld_a_n16(context: &mut CpuContext) -> Result<(), GBError> {
     print!("ld a n16");
     let addr = alu::read_u16(&context.fetch(), &context.fetch());
-    context.registers.a = context.memory.read(&mut context.clock, addr)?;
+    context.registers.a = MemoryMap::read(context, addr)?;
     Ok(())
 }
 
@@ -98,28 +95,20 @@ pub fn push(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     print!("push r16");
     let r16_param = R16::new(opcode, 4, R16Type::R16Stk)?;
     let (msb, lsb) = r16_param.read_as_tuple(&context.registers);
-    context.clock.tick(&mut context.memory.io[0x44]);
+    context.tick();
     context.registers.sp -= 1;
-    context
-        .memory
-        .write(&mut context.clock, context.registers.sp, msb)?;
+    MemoryMap::write(context, context.registers.sp, msb)?;
     context.registers.sp -= 1;
-    context
-        .memory
-        .write(&mut context.clock, context.registers.sp, lsb)?;
+    MemoryMap::write(context, context.registers.sp, lsb)?;
     Ok(())
 }
 
 pub fn pop(opcode: u8, context: &mut CpuContext) -> Result<(), GBError> {
     print!("pop r16");
     let r16_param = R16::new(opcode, 4, R16Type::R16Stk)?;
-    let lsb = context
-        .memory
-        .read(&mut context.clock, context.registers.sp)? as u16;
+    let lsb = MemoryMap::read(context, context.registers.sp)? as u16;
     context.registers.sp += 1;
-    let msb = context
-        .memory
-        .read(&mut context.clock, context.registers.sp)? as u16;
+    let msb = MemoryMap::read(context, context.registers.sp)? as u16;
     context.registers.sp += 1;
     r16_param.write((msb << 8) | lsb, &mut context.registers);
     Ok(())

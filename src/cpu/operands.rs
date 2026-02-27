@@ -1,6 +1,7 @@
 use crate::{
     cpu::{alu, cpu_context::CpuContext, reg_file::RegFile},
     error::GBError,
+    mem::map::MemoryMap,
 };
 
 const REG_NAMES: [&str; 8] = ["b", "c", "d", "e", "h", "l", "", "a"];
@@ -33,7 +34,7 @@ impl R8 {
     pub fn read(&self, context: &mut CpuContext) -> Result<u8, GBError> {
         match self {
             Self::Register(reg) => Ok(*context.registers.match_r8(*reg)?),
-            Self::Hl(addr) => Ok(context.memory.read(&mut context.clock, *addr)?),
+            Self::Hl(addr) => Ok(MemoryMap::read(context, *addr)?),
             Self::N8(n) => Ok(*n),
         }
     }
@@ -45,7 +46,7 @@ impl R8 {
                 Ok(())
             }
             Self::Hl(addr) => {
-                context.memory.write(&mut context.clock, *addr, value)?;
+                MemoryMap::write(context, *addr, value)?;
                 Ok(())
             }
             Self::N8(_) => Ok(()),

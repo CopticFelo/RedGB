@@ -1,8 +1,4 @@
-use crate::{
-    cpu::{clock::Clock, cpu_context::CpuContext},
-    error::GBError,
-    rom::rom_info::ROMInfo,
-};
+use crate::{cpu::cpu_context::CpuContext, error::GBError, rom::rom_info::ROMInfo};
 
 #[derive(Debug)]
 pub struct MemoryMap {
@@ -42,53 +38,68 @@ impl MemoryMap {
         }
     }
     /// +1 M-C (4 T-C)
-    pub fn read(&mut self, clock: &mut Clock, addr: u16) -> Result<u8, GBError> {
-        clock.tick(&mut self.io[0x44]);
+    pub fn read(context: &mut CpuContext, addr: u16) -> Result<u8, GBError> {
+        context.tick();
         let addr = addr as usize;
         match addr {
-            0x0000..=0x3FFF => self.rom_banks[0].get(addr),
-            0x4000..=0x7FFF => self.rom_banks[self.active_rom_bank].get(addr - 0x4000),
-            0x8000..=0x9FFF => self.vram[self.active_vram].get(addr - 0x8000),
-            0xA000..=0xBFFF => self.eram[self.active_eram].get(addr - 0xA000),
-            0xC000..=0xCFFF => self.wram[0].get(addr - 0xC000),
-            0xD000..=0xDFFF => self.wram[self.active_wram].get(addr - 0xD000),
-            0xE000..=0xEFFF => self.wram[0].get(addr - 0xE000),
-            0xF000..=0xFDFF => self.wram[self.active_wram].get(addr - 0xF000),
-            0xFE00..=0xFE9F => self.oam.get(addr - 0xFE00),
+            0x0000..=0x3FFF => context.memory.rom_banks[0].get(addr),
+            0x4000..=0x7FFF => {
+                context.memory.rom_banks[context.memory.active_rom_bank].get(addr - 0x4000)
+            }
+            0x8000..=0x9FFF => context.memory.vram[context.memory.active_vram].get(addr - 0x8000),
+            0xA000..=0xBFFF => context.memory.eram[context.memory.active_eram].get(addr - 0xA000),
+            0xC000..=0xCFFF => context.memory.wram[0].get(addr - 0xC000),
+            0xD000..=0xDFFF => context.memory.wram[context.memory.active_wram].get(addr - 0xD000),
+            0xE000..=0xEFFF => context.memory.wram[0].get(addr - 0xE000),
+            0xF000..=0xFDFF => context.memory.wram[context.memory.active_wram].get(addr - 0xF000),
+            0xFE00..=0xFE9F => context.memory.oam.get(addr - 0xFE00),
             0xFEA0..=0xFEFF => Some(&0),
-            0xFF00..=0xFF7F => self.io.get(addr - 0xFF00),
-            0xFF80..=0xFFFE => self.hram.get(addr - 0xFF80),
-            0xFFFF => Some(&self.ie),
+            0xFF00..=0xFF7F => context.memory.io.get(addr - 0xFF00),
+            0xFF80..=0xFFFE => context.memory.hram.get(addr - 0xFF80),
+            0xFFFF => Some(&context.memory.ie),
             _ => None,
         }
         .copied()
         .ok_or(GBError::BadAddress(addr as u16))
     }
     /// +1 M-C (4 T-C)
-    pub fn write(&mut self, clock: &mut Clock, addr: u16, value: u8) -> Result<(), GBError> {
-        clock.tick(&mut self.io[0x44]);
+    pub fn write(context: &mut CpuContext, addr: u16, value: u8) -> Result<(), GBError> {
+        context.tick();
         let addr = addr as usize;
         let opt_mem_ptr: Option<&mut u8> = match addr {
-            0x0000..=0x3FFF => {
+            0x0000..=0x1FFF => {
                 return Err(GBError::ReadOnlyAddress(addr as u16));
+            }
+            0x2000..=0x3FFF => {
+                context.memory.active_rom_bank = if value == 0 { 0x1 } else { value as usize };
+                return Ok(());
             }
             0x4000..=0x7FFF => {
                 return Err(GBError::ReadOnlyAddress(addr as u16));
             }
-            0x8000..=0x9FFF => self.vram[self.active_vram].get_mut(addr - 0x8000),
-            0xA000..=0xBFFF => self.eram[self.active_eram].get_mut(addr - 0xA000),
-            0xC000..=0xCFFF => self.wram[0].get_mut(addr - 0xC000),
-            0xD000..=0xDFFF => self.wram[self.active_wram].get_mut(addr - 0xD000),
-            0xE000..=0xEFFF => self.wram[0].get_mut(addr - 0xE000),
-            0xF000..=0xFDFF => self.wram[self.active_wram].get_mut(addr - 0xF000),
-            0xFE00..=0xFE9F => self.oam.get_mut(addr - 0xFE00),
+            0x8000..=0x9FFF => {
+                context.memory.vram[context.memory.active_vram].get_mut(addr - 0x8000)
+            }
+            0xA000..=0xBFFF => {
+                context.memory.eram[context.memory.active_eram].get_mut(addr - 0xA000)
+            }
+            0xC000..=0xCFFF => context.memory.wram[0].get_mut(addr - 0xC000),
+            0xD000..=0xDFFF => {
+                context.memory.wram[context.memory.active_wram].get_mut(addr - 0xD000)
+            }
+            0xE000..=0xEFFF => context.memory.wram[0].get_mut(addr - 0xE000),
+            0xF000..=0xFDFF => {
+                context.memory.wram[context.memory.active_wram].get_mut(addr - 0xF000)
+            }
+            0xFE00..=0xFE9F => context.memory.oam.get_mut(addr - 0xFE00),
             0xFEA0..=0xFEFF => {
                 // https://gbdev.io/pandocs/Memory_Map.html#fea0feff-range
-                return Err(GBError::IllegalAddress(addr as u16));
+                // return Err(GBError::IllegalAddress(addr as u16));
+                return Ok(());
             }
-            0xFF00..=0xFF7F => self.io.get_mut(addr - 0xFF00),
-            0xFF80..=0xFFFE => self.hram.get_mut(addr - 0xFF80),
-            0xFFFF => Some(&mut self.ie),
+            0xFF00..=0xFF7F => context.memory.io.get_mut(addr - 0xFF00),
+            0xFF80..=0xFFFE => context.memory.hram.get_mut(addr - 0xFF80),
+            0xFFFF => Some(&mut context.memory.ie),
             _ => None,
         };
         if let Some(mem_ptr) = opt_mem_ptr {

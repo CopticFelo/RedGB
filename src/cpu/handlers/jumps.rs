@@ -1,6 +1,7 @@
 use crate::{
     cpu::{alu, cpu_context::CpuContext},
     error::GBError,
+    mem::map::MemoryMap,
 };
 
 pub fn jmp(context: &mut CpuContext, opcode: u8, is_relative: bool) -> Result<(), GBError> {
@@ -26,7 +27,7 @@ pub fn jmp(context: &mut CpuContext, opcode: u8, is_relative: bool) -> Result<()
         || !is_conditional
     {
         context.registers.pc = target_address;
-        context.clock.tick(&mut context.memory.io[0x44]);
+        context.tick();
     }
     Ok(())
 }
@@ -45,19 +46,19 @@ pub fn call(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
         || !is_conditional
     {
         context.registers.sp -= 1;
-        context.memory.write(
-            &mut context.clock,
+        MemoryMap::write(
+            context,
             context.registers.sp,
             (context.registers.pc >> 8) as u8,
         )?;
         context.registers.sp -= 1;
-        context.memory.write(
-            &mut context.clock,
+        MemoryMap::write(
+            context,
             context.registers.sp,
             (context.registers.pc & 0xFF) as u8,
         )?;
         context.registers.pc = target_address;
-        context.clock.tick(&mut context.memory.io[0x44]);
+        context.tick();
     }
     Ok(())
 }
@@ -66,7 +67,7 @@ pub fn ret(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
     print!("ret");
     if opcode != 0xC9 || opcode != 0xD9 {
         print!(" cc");
-        context.clock.tick(&mut context.memory.io[0x44]);
+        context.tick();
         if !context
             .registers
             .match_condition(alu::read_bits(opcode, 3, 2))?
@@ -74,36 +75,32 @@ pub fn ret(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
             return Ok(());
         }
     }
-    let lsb = context
-        .memory
-        .read(&mut context.clock, context.registers.sp)?;
+    let lsb = MemoryMap::read(context, context.registers.sp)?;
     context.registers.sp += 1;
-    let msb = context
-        .memory
-        .read(&mut context.clock, context.registers.sp)?;
+    let msb = MemoryMap::read(context, context.registers.sp)?;
     context.registers.sp += 1;
     let addr = alu::read_u16(&lsb, &msb);
     if opcode == 0xD9 {
         context.memory.ie = 1;
         print!("i");
     }
-    context.clock.tick(&mut context.memory.io[0x44]);
+    context.tick();
     context.registers.pc = addr;
     Ok(())
 }
 
 pub fn rst(context: &mut CpuContext, opcode: u8) -> Result<(), GBError> {
     let addr = (alu::read_bits(opcode, 3, 3) * 8) as u16;
-    context.clock.tick(&mut context.memory.io[0x44]);
+    context.tick();
     context.registers.sp -= 1;
-    context.memory.write(
-        &mut context.clock,
+    MemoryMap::write(
+        context,
         context.registers.sp,
         (context.registers.pc >> 8) as u8,
     )?;
     context.registers.sp -= 1;
-    context.memory.write(
-        &mut context.clock,
+    MemoryMap::write(
+        context,
         context.registers.sp,
         (context.registers.pc & 0xFF) as u8,
     )?;
