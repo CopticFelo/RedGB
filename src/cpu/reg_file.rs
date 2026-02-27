@@ -43,6 +43,7 @@ pub struct RegFile {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
+    pub ime: bool,
 }
 
 impl RegFile {
@@ -64,6 +65,7 @@ impl RegFile {
             l,
             sp: 0xFFFE,
             pc: 0x100,
+            ime: false,
         }
     }
 

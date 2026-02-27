@@ -51,12 +51,13 @@ impl CpuContext {
                 } // NOP
                 0xF3 => {
                     print!("DI");
-                    self.memory.ie = 0;
+                    self.registers.ime = false;
                     Ok(())
                 } // DI
                 0xFB => {
                     print!("EI");
-                    self.memory.ie = 1;
+                    // TODO: this is supposed to execute a cycle later for some reason
+                    self.registers.ime = true;
                     Ok(())
                 } // EI
                 0xC2 | 0xD2 | 0xCA | 0xDA | 0xC3 => jumps::jmp(self, opcode, false), // JP cc, imm16 | JP imm16
