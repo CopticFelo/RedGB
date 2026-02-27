@@ -56,7 +56,6 @@ impl CpuContext {
                 } // DI
                 0xFB => {
                     print!("EI");
-                    // TODO: this is supposed to execute a cycle later for some reason
                     self.registers.ime = true;
                     Ok(())
                 } // EI
@@ -181,7 +180,40 @@ impl CpuContext {
             };
             println!();
             Self::handle_error(result)?;
+            if self.registers.ime && opcode != 0xFB {
+                self.handle_interupts()?;
+            }
         }
+    }
+
+    fn handle_interupts(&mut self) -> Result<(), GBError> {
+        for i in 0..5 {
+            if alu::read_bits(self.memory.io[0x0F], i, 1) == 1
+                && alu::read_bits(self.memory.ie, i, 1) == 1
+            {
+                self.registers.ime = false;
+                self.memory.io[0x0F] = alu::set_bit(self.memory.io[0x0F], i, false);
+                self.clock.tick(&mut self.memory.io[0x44]);
+                self.clock.tick(&mut self.memory.io[0x44]);
+                let target_address = (0x40 + 8 * i) as u16;
+                self.registers.sp -= 1;
+                self.memory.write(
+                    &mut self.clock,
+                    self.registers.sp,
+                    (self.registers.pc >> 8) as u8,
+                )?;
+                self.registers.sp -= 1;
+                self.memory.write(
+                    &mut self.clock,
+                    self.registers.sp,
+                    (self.registers.pc & 0xFF) as u8,
+                )?;
+                self.registers.pc = target_address;
+                self.clock.tick(&mut self.memory.io[0x44]);
+                break;
+            }
+        }
+        Ok(())
     }
 
     fn handle_error(result: Result<(), GBError>) -> Result<(), GBError> {
