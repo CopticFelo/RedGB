@@ -6,22 +6,22 @@ use std::{env, fs, io};
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut rom_path: String = String::new();
-    #[cfg(not(debug_assertions))]
-    {
-        if args.len() < 2 {
+    if args.len() < 2 {
+        #[cfg(not(debug_assertions))]
+        {
             print!("Input ROM:");
             io::stdout().flush().unwrap();
             io::stdin()
                 .read_line(&mut rom_path)
                 .expect("Input error occoured");
             rom_path = rom_path.trim().to_string();
-        } else {
-            rom_path = args[1].clone();
         }
-    }
-    #[cfg(debug_assertions)]
-    {
-        rom_path = "/home/felo/dev/rust/RedGB/test_roms/tetris.gb".to_string();
+        #[cfg(debug_assertions)]
+        {
+            rom_path = "/home/felo/dev/rust/RedGB/test_roms/tetris.gb".to_string();
+        }
+    } else {
+        rom_path = args[1].clone();
     }
     println!("Reading input rom: {rom_path}");
     let rom = fs::read(rom_path).expect("Failed to read file");
