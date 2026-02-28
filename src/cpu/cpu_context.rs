@@ -8,31 +8,30 @@ use crate::{
     },
     error::GBError,
     mem::map::MemoryMap,
+    ppu::ppu::PPU,
 };
 
 pub struct CpuContext {
     pub registers: RegFile,
     pub memory: MemoryMap,
-    t_cycles: u64,
+    pub t_cycles: u64,
+    ppu: PPU,
 }
 
 impl CpuContext {
-    pub fn init(registers: RegFile, memory: MemoryMap) -> Self {
+    pub fn init(registers: RegFile, memory: MemoryMap, ppu: PPU) -> Self {
         Self {
             registers,
             memory,
             t_cycles: 0,
+            ppu,
         }
     }
 
     pub fn tick(&mut self) {
         self.t_cycles += 4_u64;
 
-        // V-Blank
-        // HACK: probably will change later
-        if self.t_cycles.is_multiple_of(456) {
-            self.memory.io[0x44] = self.memory.io[0x44].wrapping_add(1);
-        }
+        PPU::tick(self);
     }
 
     pub fn fetch(&mut self) -> u8 {
@@ -50,6 +49,11 @@ impl CpuContext {
 
     pub fn start_exec_cycle(&mut self) -> Result<(), GBError> {
         loop {
+            if self.ppu.is_exit() {
+                dbg!(&self.t_cycles);
+                dbg!(&self.registers);
+                break Ok(());
+            }
             let opcode = self.fetch();
             print!("{:#X}: ", self.registers.pc);
             print!("{:#X} -> ", opcode);
