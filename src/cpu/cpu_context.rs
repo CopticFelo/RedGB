@@ -11,6 +11,9 @@ use crate::{
     ppu::ppu::PPU,
 };
 
+const SB: usize = 0x1;
+const SC: usize = 0x2;
+
 pub struct CpuContext {
     pub registers: RegFile,
     pub memory: MemoryMap,
@@ -32,6 +35,11 @@ impl CpuContext {
         self.t_cycles += 4_u64;
 
         PPU::tick(self);
+
+        if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
+            dbg!("Serial: {:b}", self.memory.io[SB]);
+            self.memory.io[SB] <<= 1;
+        }
     }
 
     pub fn fetch(&mut self) -> u8 {
