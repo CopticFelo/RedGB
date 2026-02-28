@@ -33,7 +33,7 @@ impl MemoryMap {
             active_wram: 1,
             oam: vec![0; 0x100],
             io: vec![0; 0x80],
-            hram: vec![0; 0x7E],
+            hram: vec![0; 0x7F],
             ie: 0,
         }
     }
