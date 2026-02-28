@@ -7,7 +7,10 @@ use sdl3::render::{FPoint, WindowCanvas};
 use sdl3::sys::pixels;
 use sdl3::{Error, EventPump, Sdl, VideoSubsystem};
 
+use crate::cpu::alu;
 use crate::cpu::cpu_context::CpuContext;
+
+const LY: usize = 0x44;
 
 pub struct PPU {
     pub sdl_context: Sdl,
@@ -55,7 +58,15 @@ impl PPU {
     }
     pub fn tick(context: &mut CpuContext) {
         if context.t_cycles.is_multiple_of(456) {
-            context.memory.io[0x44] = context.memory.io[0x44].wrapping_add(1);
+            // TODO: Draw line to framebuffer
+            context.memory.io[LY] = context.memory.io[LY].wrapping_add(1);
+        }
+        if context.memory.io[LY] > 153 {
+            // Reset LY
+            context.memory.io[LY] = 0;
+            // Raise V-Blank interrupt
+            context.memory.io[0x0F] = alu::set_bit(context.memory.io[0x0F], 0, true);
+            // TODO: Draw framebuffer to SDL
         }
     }
 }
