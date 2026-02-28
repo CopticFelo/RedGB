@@ -62,8 +62,8 @@ impl CpuContext {
                 dbg!(&self.registers);
                 break Ok(());
             }
-            let opcode = self.fetch();
             print!("{:#X}: ", self.registers.pc);
+            let opcode = self.fetch();
             print!("{:#X} -> ", opcode);
             let result = match opcode {
                 0x0 => {
