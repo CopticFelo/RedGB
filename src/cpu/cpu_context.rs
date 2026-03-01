@@ -1,4 +1,6 @@
-use std::slice;
+use std::{process, slice};
+
+use log::{debug, error, info};
 
 use crate::{
     cpu::{
@@ -37,7 +39,7 @@ impl CpuContext {
         PPU::tick(self);
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
-            dbg!("Serial: {:b}", self.memory.io[SB]);
+            info!("Serial: {}", self.memory.io[SB]);
             self.memory.io[SB] <<= 1;
         }
     }
@@ -47,7 +49,7 @@ impl CpuContext {
             Ok(op) => op,
             // HACK: Probably improper error handling
             Err(s) => {
-                println!("{}", s);
+                debug!("{}", s);
                 0x0
             }
         };
@@ -58,27 +60,21 @@ impl CpuContext {
     pub fn start_exec_cycle(&mut self) -> Result<(), GBError> {
         loop {
             if self.ppu.is_exit() {
-                dbg!(&self.t_cycles);
-                dbg!(&self.registers);
+                info!("Cycle count: {}", &self.t_cycles);
+                info!("CPU {:#?}", &self.registers);
                 break Ok(());
             }
-            print!("{:#X}: ", self.registers.pc);
+            let opcode_addr = self.registers.pc;
             let opcode = self.fetch();
-            print!("{:#X} -> ", opcode);
             let result = match opcode {
-                0x0 => {
-                    print!("nop");
-                    Ok(())
-                } // NOP
+                0x0 => Ok("nop".to_string()), // NOP
                 0xF3 => {
-                    print!("DI");
                     self.registers.ime = false;
-                    Ok(())
+                    Ok("di".to_string())
                 } // DI
                 0xFB => {
-                    print!("EI");
                     self.registers.ime = true;
-                    Ok(())
+                    Ok("ei".to_string())
                 } // EI
                 0xC2 | 0xD2 | 0xCA | 0xDA | 0xC3 => jumps::jmp(self, opcode, false), // JP cc, imm16 | JP imm16
                 0x20 | 0x30 | 0x28 | 0x38 | 0x18 => jumps::jmp(self, opcode, true), // JR cc, imm8 | JR imm8
@@ -86,39 +82,34 @@ impl CpuContext {
                 0xD9 | 0xC9 | 0xD8 | 0xC8 | 0xD0 | 0xC0 => jumps::ret(self, opcode), // RET | RETI | RET cc
                 0xC7 | 0xD7 | 0xE7 | 0xF7 | 0xCF | 0xDF | 0xEF | 0xFF => jumps::rst(self, opcode), // RST tgt3
                 0xE9 => {
-                    println!("jp [hl]");
                     self.registers.pc = alu::read_u16(&self.registers.l, &self.registers.h);
-                    Ok(())
+                    Ok("jp [hl]".to_string())
                 } // JP hl
                 0xF8 => loads_16::ld_hl_sp_delta(self), // LD HL SP+E8
                 0xF9 => {
-                    print!("ld sp hl");
                     self.registers.sp = alu::read_u16(&self.registers.l, &self.registers.h);
                     self.tick();
-                    Ok(())
+                    Ok("ld sp hl".to_string())
                 } // LD SP HL
                 0xE0 => {
-                    print!("ldh [a8] a");
                     let addr = 0xFF00 + self.fetch() as u16;
-                    MemoryMap::write(self, addr, self.registers.a)
+                    MemoryMap::write(self, addr, self.registers.a)?;
+                    Ok(format!("ldh [{}] a", addr))
                 } // LDH [A8] A
                 0xF0 => {
-                    print!("ldh a [a8]");
                     let addr = 0xFF00 + self.fetch() as u16;
                     self.registers.a = MemoryMap::read(self, addr)?;
-                    Ok(())
+                    Ok(format!("ldh a [{}]", addr))
                 } // LDH A [A8]
                 0xE2 => {
-                    print!("ldh [C] a");
                     let addr = 0xFF00 + self.registers.c as u16;
                     MemoryMap::write(self, addr, self.registers.a)?;
-                    Ok(())
+                    Ok("ldh [C] a".to_string())
                 } // LDH [C] A
                 0xF2 => {
-                    print!("ldh a [C]");
                     let addr = 0xFF00 + self.registers.c as u16;
                     self.registers.a = MemoryMap::read(self, addr)?;
-                    Ok(())
+                    Ok("ldh a [C]".to_string())
                 } // LDH A [C]
                 0x8 => loads_16::ld_n16_sp(self),       // LD [imm16] SP
                 0x06 | 0x16 | 0x26 | 0x36 | 0x0E | 0x1E | 0x2E | 0x3E | 0x40..0x80 => {
@@ -149,58 +140,51 @@ impl CpuContext {
                 } // DEC r8, DEC [hl]
                 0x07 | 0x17 => {
                     let through_carry = alu::read_bits(opcode, 4, 1) == 1;
-                    print!("{} ", if through_carry { "rla" } else { "rlca" });
                     let (a, carry) = alu::rotate_left(
                         self.registers.a,
                         self.registers.read_flag(crate::cpu::reg_file::Flag::Carry),
                         through_carry,
                     );
                     self.registers.a = a;
-                    self.registers.set_all_flags(&[0, 0, 0, carry as u8])
+                    self.registers.set_all_flags(&[0, 0, 0, carry as u8])?;
+                    Ok((if through_carry { "rla" } else { "rlca" }).to_string())
                 } // RLA | RLCA
                 0x0F | 0x1F => {
                     let through_carry = alu::read_bits(opcode, 4, 1) == 1;
-                    print!("{} ", if through_carry { "rra" } else { "rrca" });
                     let (a, carry) = alu::rotate_right(
                         self.registers.a,
                         self.registers.read_flag(crate::cpu::reg_file::Flag::Carry),
                         through_carry,
                     );
                     self.registers.a = a;
-                    self.registers.set_all_flags(&[0, 0, 0, carry as u8])
+                    self.registers.set_all_flags(&[0, 0, 0, carry as u8])?;
+                    Ok(format!("{} ", if through_carry { "rra" } else { "rrca" }))
                 } // RRA | RRCA
                 // TODO: It's probably a good idea to merge these 2 branches above ^
                 0x37 => {
-                    print!("scf");
                     self.registers.set_flag(Flag::Carry, Some(true))?;
                     self.registers.set_flag(Flag::HalfCarry, Some(false))?;
                     self.registers.set_flag(Flag::Subtract, Some(false))?;
-                    Ok(())
+                    Ok("scf".to_string())
                 } // SCF
                 0x3F => {
-                    print!("ccf");
                     self.registers.set_flag(Flag::Carry, None)?;
                     self.registers.set_flag(Flag::HalfCarry, Some(false))?;
                     self.registers.set_flag(Flag::Subtract, Some(false))?;
-                    Ok(())
+                    Ok("ccf".to_string())
                 } // CCF
                 0x2F => {
-                    print!("cpl");
                     self.registers.a = !self.registers.a;
-                    Ok(())
+                    Ok("cpl".to_string())
                 } // CPL
                 0x27 => arithmetic::daa(self), // DAA
                 0xCB => self.prefixed_instr(),
                 0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB..0xEE | 0xF4 | 0xFC | 0xFD => {
                     Err(GBError::IllegalInstruction(opcode))
                 }
-                _ => {
-                    print!("<unsupported>");
-                    Ok(())
-                }
+                _ => Ok("<unsupported>".to_string()),
             };
-            println!();
-            Self::handle_error(result)?;
+            Self::handle_result(result, opcode, opcode_addr)?;
             if self.registers.ime && opcode != 0xFB {
                 self.handle_interupts()?;
             }
@@ -229,19 +213,26 @@ impl CpuContext {
         Ok(())
     }
 
-    fn handle_error(result: Result<(), GBError>) -> Result<(), GBError> {
+    fn handle_result(
+        result: Result<String, GBError>,
+        opcode: u8,
+        opcode_addr: u16,
+    ) -> Result<(), GBError> {
         match result {
-            Ok(_) => Ok(()),
+            Ok(s) => {
+                debug!("{:#X}: {:#X} -> {}", opcode_addr, opcode, s);
+                Ok(())
+            }
             Err(err) => match err {
-                GBError::IllegalAddress(_) => {
-                    eprintln!("{}", err);
+                GBError::IllegalAddress(_) | GBError::ReadOnlyAddress(_) => {
+                    error!("{}", err);
                     Ok(())
                 }
                 _ => Err(err),
             },
         }
     }
-    fn prefixed_instr(&mut self) -> Result<(), GBError> {
+    fn prefixed_instr(&mut self) -> Result<String, GBError> {
         let opcode = self.fetch();
         match opcode {
             0x0..0x20 => bitwise::rotate_to_carry(opcode, self), // RL R8 | RR R8 | RLC R8 | RRC R8

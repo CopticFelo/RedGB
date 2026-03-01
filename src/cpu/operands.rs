@@ -53,12 +53,11 @@ impl R8 {
         }
     }
 
-    //TODO: implement a better logging system
-    pub fn log(&self) {
+    pub fn log(&self) -> String {
         match self {
-            Self::Register(reg) => print!("{} ", REG_NAMES[*reg as usize]),
-            Self::Hl(addr) => print!("[{:#X}] ", addr),
-            Self::N8(n8) => print!("{:#X} ", n8),
+            Self::Register(reg) => format!("{}", REG_NAMES[*reg as usize]),
+            Self::Hl(addr) => format!("[{:#X}]", addr),
+            Self::N8(n8) => format!("{:#X}", n8),
         }
     }
 }
@@ -69,7 +68,7 @@ pub enum R16Type {
     R16Mem,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum R16 {
     BC,
     DE,
@@ -122,5 +121,9 @@ impl R16 {
             R16::AF => alu::write_u16(&mut reg_file.f, &mut reg_file.a, value),
             R16::SP => reg_file.sp = value,
         }
+    }
+
+    pub fn log(&self) -> String {
+        format!("{:?}", *self)
     }
 }

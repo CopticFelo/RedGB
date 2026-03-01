@@ -4,6 +4,7 @@ use std::io::Write;
 use std::{env, fs, io};
 
 fn main() {
+    env_logger::init();
     let args: Vec<String> = env::args().collect();
     let mut rom_path: String = String::new();
     if args.len() < 2 {
