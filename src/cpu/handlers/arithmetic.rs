@@ -1,3 +1,5 @@
+use log::error;
+
 use crate::{
     cpu::{alu::*, cpu_context::CpuContext, operands::R8, reg_file::Flag},
     error::GBError,
@@ -7,15 +9,18 @@ pub fn add(opcode: u8, context: &mut CpuContext) -> Result<String, GBError> {
     let r8_param = R8::get_r8_param(opcode == 0xC6 || opcode == 0xCE, opcode, 0, context);
     let src = r8_param.read(context)?;
     let mut opcode_name = String::new();
-    let addend = if read_bits(opcode, 3, 1) == 1 && context.registers.read_flag(Flag::Carry) {
+    let carry_flag =
+        (read_bits(opcode, 3, 1) == 1 && context.registers.read_flag(Flag::Carry)) as u8;
+    let (res, carry) = if carry_flag == 1 {
         opcode_name += "adc ";
-        src + 1
+        let res1 = context.registers.a.overflowing_add(src);
+        let res2 = res1.0.overflowing_add(carry_flag);
+        (res2.0, res1.1 || res2.1)
     } else {
         opcode_name += "add ";
-        src
+        context.registers.a.overflowing_add(src)
     };
-    let half_carry = (context.registers.a & 0xF) + (addend & 0xF) > 0xF;
-    let (res, carry) = context.registers.a.overflowing_add(addend);
+    let half_carry = (context.registers.a & 0xF) + (src & 0xF) + carry_flag > 0xF;
     let zero = res == 0;
     context
         .registers
@@ -28,15 +33,21 @@ pub fn sub(opcode: u8, context: &mut CpuContext) -> Result<String, GBError> {
     let r8_param = R8::get_r8_param(opcode == 0xD6 || opcode == 0xDE, opcode, 0, context);
     let src = r8_param.read(context)?;
     let mut opcode_name = String::new();
-    let subtrahend = if read_bits(opcode, 3, 1) == 1 && context.registers.read_flag(Flag::Carry) {
+    let carry_flag =
+        (read_bits(opcode, 3, 1) == 1 && context.registers.read_flag(Flag::Carry)) as u8;
+    let (res, carry) = if carry_flag == 1 {
         opcode_name += "sbc ";
-        src + 1
+        let res1 = context.registers.a.overflowing_sub(src);
+        let res2 = res1.0.overflowing_sub(carry_flag);
+        (res2.0, res1.1 || res2.1)
     } else {
         opcode_name += "sub ";
-        src
+        context.registers.a.overflowing_sub(src)
     };
-    let half_carry = (context.registers.a & 0xF) < (subtrahend & 0xF);
-    let (res, carry) = context.registers.a.overflowing_sub(subtrahend);
+    let half_carry = (context.registers.a & 0xF)
+        .wrapping_sub(src & 0xF)
+        .wrapping_sub(carry_flag)
+        > 0xF;
     let zero = res == 0;
     context
         .registers
