@@ -100,5 +100,6 @@ pub fn pop(opcode: u8, context: &mut CpuContext) -> Result<String, GBError> {
     let msb = MemoryMap::read(context, context.registers.sp)? as u16;
     context.registers.sp += 1;
     r16_param.write((msb << 8) | lsb, &mut context.registers);
+    context.registers.f &= 0xF0;
     Ok(format!("pop {}", r16_param.log()))
 }
