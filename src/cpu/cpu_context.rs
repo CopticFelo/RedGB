@@ -1,4 +1,7 @@
-use std::{process, slice};
+use std::{
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 use log::{debug, error, info};
 
@@ -21,6 +24,7 @@ pub struct CpuContext {
     pub memory: MemoryMap,
     pub t_cycles: u64,
     ppu: PPU,
+    timer: Option<Instant>,
 }
 
 impl CpuContext {
@@ -30,6 +34,7 @@ impl CpuContext {
             memory,
             t_cycles: 0,
             ppu,
+            timer: None,
         }
     }
 
@@ -41,6 +46,20 @@ impl CpuContext {
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             info!("Serial: {}", self.memory.io[SB]);
             self.memory.io[SB] <<= 1;
+        }
+        if self.t_cycles == 4194304 {
+            match self.timer {
+                Some(time) => {
+                    if time.elapsed().as_secs() < 1 {
+                        sleep(Duration::new(1, 0).abs_diff(time.elapsed()));
+                        self.timer = Some(Instant::now());
+                        self.t_cycles %= 4194304;
+                    }
+                }
+                None => {
+                    self.timer = Some(Instant::now());
+                }
+            }
         }
     }
 
