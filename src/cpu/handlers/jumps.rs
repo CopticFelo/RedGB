@@ -66,7 +66,7 @@ pub fn ret(context: &mut CpuContext, opcode: u8) -> Result<String, GBError> {
         context.memory.ie = 1;
         log += "i";
     }
-    if opcode != 0xC9 || opcode != 0xD9 {
+    if opcode != 0xC9 && opcode != 0xD9 {
         let condition = alu::read_bits(opcode, 3, 2);
         log += &format!(" {}", CONDITION_NAMES[condition as usize]);
         context.tick();
