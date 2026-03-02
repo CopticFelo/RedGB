@@ -34,7 +34,7 @@ pub fn jmp(context: &mut CpuContext, opcode: u8, is_relative: bool) -> Result<St
 
 pub fn call(context: &mut CpuContext, opcode: u8) -> Result<String, GBError> {
     let target_address: u16 = alu::read_u16(&context.fetch(), &context.fetch());
-    let is_conditional: bool = opcode != 0xC3;
+    let is_conditional: bool = opcode != 0xCD;
     let mut log = String::from("call ");
     let condition = alu::read_bits(opcode, 3, 2);
     if is_conditional {
