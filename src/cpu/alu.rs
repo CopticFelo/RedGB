@@ -20,8 +20,11 @@ pub fn read_bits(num: u8, index: u8, length: u8) -> u8 {
 }
 
 pub fn set_bit(num: u8, index: u8, bit: bool) -> u8 {
-    let value = bit as u8;
-    return num | (value << index);
+    if bit {
+        num | (1 << index)
+    } else {
+        num & !(1 << index)
+    }
 }
 
 pub fn write_bits(target: &mut u8, index: u8, length: u8, bits: u8) -> Result<(), GBError> {
