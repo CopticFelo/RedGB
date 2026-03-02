@@ -175,6 +175,8 @@ impl CpuContext {
                 } // CCF
                 0x2F => {
                     self.registers.a = !self.registers.a;
+                    self.registers.set_flag(Flag::Subtract, Some(true))?;
+                    self.registers.set_flag(Flag::HalfCarry, Some(true))?;
                     Ok("cpl".to_string())
                 } // CPL
                 0x27 => arithmetic::daa(self), // DAA
