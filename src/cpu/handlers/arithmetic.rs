@@ -104,7 +104,6 @@ pub fn inc_r8(opcode: u8, context: &mut CpuContext, delta: i8) -> Result<String,
         half_carry = (value & 0xF) + (delta as u8 & 0xF) > 0xF;
         sub = false
     }
-    r8_param.log();
     zero = res == 0;
     r8_param.write(context, res)?;
     context.registers.set_all_flags(&[
