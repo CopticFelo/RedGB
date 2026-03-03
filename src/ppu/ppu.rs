@@ -1,5 +1,6 @@
 extern crate sdl3;
 
+use log::{debug, trace};
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::Color;
@@ -60,13 +61,15 @@ impl PPU {
         if context.t_cycles.is_multiple_of(456) {
             // TODO: Draw line to framebuffer
             context.memory.io[LY] = context.memory.io[LY].wrapping_add(1);
+            debug!("LY: {}", context.memory.io[LY]);
         }
         if context.memory.io[LY] > 153 {
             // Reset LY
             context.memory.io[LY] = 0;
+            // TODO: Draw framebuffer to SDL
+        } else if context.memory.io[LY] == 144 {
             // Raise V-Blank interrupt
             context.memory.io[0x0F] = alu::set_bit(context.memory.io[0x0F], 0, true);
-            // TODO: Draw framebuffer to SDL
         }
     }
 }
