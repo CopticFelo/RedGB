@@ -44,7 +44,6 @@ impl CpuContext {
         PPU::tick(self);
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
-            info!("Serial: {}", self.memory.io[SB]);
             self.memory.io[SB] <<= 1;
         }
         if self.t_cycles == 4194304 {

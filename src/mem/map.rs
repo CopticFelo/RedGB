@@ -97,7 +97,14 @@ impl MemoryMap {
                 // return Err(GBError::IllegalAddress(addr as u16));
                 return Ok(());
             }
-            0xFF00..=0xFF7F => context.memory.io.get_mut(addr - 0xFF00),
+            0xFF00..=0xFF7F => {
+                let byte = context.memory.io.get_mut(addr - 0xFF00);
+                if addr == 0xFF01 {
+                    // info!("Serial: {:?}", value);
+                    print!("{} ", value);
+                }
+                byte
+            }
             0xFF80..=0xFFFE => context.memory.hram.get_mut(addr - 0xFF80),
             0xFFFF => Some(&mut context.memory.ie),
             _ => None,
