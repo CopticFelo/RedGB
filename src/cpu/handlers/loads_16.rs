@@ -53,7 +53,7 @@ pub fn ld_n16_sp(context: &mut CpuContext) -> Result<String, GBError> {
 
 pub fn ld_hl_sp_delta(context: &mut CpuContext) -> Result<String, GBError> {
     let delta = context.fetch() as i8;
-    let result = (context.registers.sp as i16) + delta as i16;
+    let result = (context.registers.sp as i16).wrapping_add(delta as i16);
     alu::write_u16(
         &mut context.registers.l,
         &mut context.registers.h,
@@ -96,9 +96,9 @@ pub fn push(opcode: u8, context: &mut CpuContext) -> Result<String, GBError> {
 pub fn pop(opcode: u8, context: &mut CpuContext) -> Result<String, GBError> {
     let r16_param = R16::new(opcode, 4, R16Type::R16Stk)?;
     let lsb = MemoryMap::read(context, context.registers.sp)? as u16;
-    context.registers.sp += 1;
+    context.registers.sp = context.registers.sp.wrapping_add(1);
     let msb = MemoryMap::read(context, context.registers.sp)? as u16;
-    context.registers.sp += 1;
+    context.registers.sp = context.registers.sp.wrapping_add(1);
     r16_param.write((msb << 8) | lsb, &mut context.registers);
     context.registers.f &= 0xF0;
     Ok(format!("pop {}", r16_param.log()))
