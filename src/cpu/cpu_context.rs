@@ -40,25 +40,24 @@ impl CpuContext {
 
     pub fn tick(&mut self) {
         self.t_cycles += 4_u64;
-
+        trace!("cycles {}", self.t_cycles);
         PPU::tick(self);
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             self.memory.io[SB] <<= 1;
         }
-        if self.t_cycles == 4194304 {
-            match self.timer {
-                Some(time) => {
-                    if time.elapsed().as_secs() < 1 {
-                        sleep(Duration::new(1, 0).abs_diff(time.elapsed()));
-                        self.timer = Some(Instant::now());
-                        self.t_cycles %= 4194304;
-                    }
-                }
-                None => {
-                    self.timer = Some(Instant::now());
+        if self.t_cycles.is_multiple_of(4194304) {
+            if let Some(interval) = self.timer {
+                let elapsed = interval.elapsed();
+                if elapsed < Duration::new(1, 0) {
+                    info!("Sleeping for {} ns", elapsed.subsec_nanos());
+                    sleep(Duration::new(1, 0).abs_diff(elapsed));
+                } else {
+                    info!("No sleep");
                 }
             }
+            self.timer = Some(Instant::now());
+            self.t_cycles %= 4194304;
         }
     }
 
