@@ -81,6 +81,11 @@ impl CpuContext {
                 info!("CPU {:#?}", &self.registers);
                 break Ok(());
             }
+            if !self.registers.exec {
+                self.tick();
+                self.handle_interupts()?;
+                continue;
+            }
             let opcode_addr = self.registers.pc;
             let opcode = self.fetch();
             let result = match opcode {
@@ -129,6 +134,10 @@ impl CpuContext {
                     Ok("ldh a [C]".to_string())
                 } // LDH A [C]
                 0x8 => loads_16::ld_n16_sp(self),       // LD [imm16] SP
+                0x76 => {
+                    self.registers.exec = false;
+                    Ok("halt".to_string())
+                }
                 0x06 | 0x16 | 0x26 | 0x36 | 0x0E | 0x1E | 0x2E | 0x3E | 0x40..0x80 => {
                     loads::load_r8(self, opcode)
                 } // LD r8, r8 | LD r8, [hl] | LD [hl], r8
@@ -215,7 +224,12 @@ impl CpuContext {
             if alu::read_bits(self.memory.io[0x0F], i, 1) == 1
                 && alu::read_bits(self.memory.ie, i, 1) == 1
             {
+                if !self.registers.ime {
+                    self.registers.exec = true;
+                    return Ok(());
+                }
                 self.registers.ime = false;
+                self.registers.exec = true;
                 self.memory.io[0x0F] = alu::set_bit(self.memory.io[0x0F], i, false);
                 self.tick();
                 self.tick();
