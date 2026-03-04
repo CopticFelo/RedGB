@@ -1,6 +1,6 @@
 extern crate sdl3;
 
-use log::{debug, trace};
+use log::{debug, info, trace};
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::Color;
@@ -19,6 +19,7 @@ pub struct PPU {
     canvas: WindowCanvas,
     event_pump: EventPump,
     framebuffer: Vec<Vec<u32>>,
+    last_cycle: u64,
 }
 
 impl PPU {
@@ -39,6 +40,7 @@ impl PPU {
             canvas,
             event_pump,
             framebuffer: vec![vec![0x95AB12FF; 144]; 160],
+            last_cycle: 0,
         })
     }
 
@@ -58,10 +60,11 @@ impl PPU {
         false
     }
     pub fn tick(context: &mut CpuContext) {
-        if context.t_cycles.is_multiple_of(456) {
+        if context.t_cycles.abs_diff(context.ppu.last_cycle) >= 456 {
             // TODO: Draw line to framebuffer
             context.memory.io[LY] = context.memory.io[LY].wrapping_add(1);
-            debug!("LY: {}", context.memory.io[LY]);
+            context.ppu.last_cycle = context.t_cycles;
+            trace!("LY: {}", context.memory.io[LY]);
         }
         if context.memory.io[LY] > 153 {
             // Reset LY
