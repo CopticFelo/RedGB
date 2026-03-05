@@ -93,10 +93,14 @@ impl MemoryMap {
             }
             0xFF00..=0xFF7F => {
                 let byte = context.memory.io.get_mut(addr - 0xFF00);
-                if addr == 0xFF01 {
-                    // info!("Serial: {:?}", value);
-                    print!("{} ", value);
-                }
+                match addr {
+                    0xFF01 => print!("{} ", value),
+                    0xFF04 => {
+                        *byte.unwrap() = 0;
+                        return Ok(());
+                    }
+                    _ => (),
+                };
                 byte
             }
             0xFF80..=0xFFFE => context.memory.hram.get_mut(addr - 0xFF80),
