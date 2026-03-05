@@ -83,6 +83,7 @@ impl CpuContext {
             if self.ppu.is_exit() {
                 info!("Cycle count: {}", &self.t_cycles);
                 info!("CPU {:#?}", &self.registers);
+                trace!("VRAM {:?}", &self.memory.vram[0]);
                 break Ok(());
             }
             if !self.registers.exec {
@@ -216,7 +217,7 @@ impl CpuContext {
                 }
                 _ => Ok("<unsupported>".to_string()),
             };
-            Self::handle_result(result, opcode, opcode_addr)?;
+            Self::handle_result(result, opcode, opcode_addr, &self.registers)?;
             if self.registers.ime && opcode != 0xFB {
                 self.handle_interupts()?;
             }
@@ -254,10 +255,12 @@ impl CpuContext {
         result: Result<String, GBError>,
         opcode: u8,
         opcode_addr: u16,
+        registers: &RegFile,
     ) -> Result<(), GBError> {
         match result {
             Ok(s) => {
                 debug!("{:#X}: {:#X} -> {}", opcode_addr, opcode, s);
+                trace!("{:?}", registers);
                 Ok(())
             }
             Err(err) => match err {

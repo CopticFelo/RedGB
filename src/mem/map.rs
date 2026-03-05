@@ -4,7 +4,7 @@ use crate::{cpu::cpu_context::CpuContext, error::GBError, rom::rom_info::ROMInfo
 pub struct MemoryMap {
     rom_banks: Vec<Vec<u8>>,
     active_rom_bank: usize,
-    vram: Vec<Vec<u8>>,
+    pub vram: Vec<Vec<u8>>,
     active_vram: usize,
     eram: Vec<Vec<u8>>,
     active_eram: usize,
