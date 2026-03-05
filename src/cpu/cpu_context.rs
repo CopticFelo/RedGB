@@ -50,7 +50,7 @@ impl CpuContext {
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             self.memory.io[SB] <<= 1;
         }
-        if self.t_cycles.is_multiple_of(4194304) {
+        if self.t_cycles == 4194304 {
             if let Some(interval) = self.timer {
                 let elapsed = interval.elapsed();
                 if elapsed < Duration::new(1, 0) {
