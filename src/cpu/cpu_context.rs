@@ -3,13 +3,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 
 use crate::{
     cpu::{
         alu,
         handlers::*,
         reg_file::{Flag, RegFile},
+        timer::GBTimer,
     },
     error::GBError,
     mem::map::MemoryMap,
@@ -23,7 +24,8 @@ pub struct CpuContext {
     pub registers: RegFile,
     pub memory: MemoryMap,
     pub t_cycles: u64,
-    ppu: PPU,
+    pub ppu: PPU,
+    pub gbtimer: GBTimer,
     timer: Option<Instant>,
 }
 
@@ -34,6 +36,7 @@ impl CpuContext {
             memory,
             t_cycles: 0,
             ppu,
+            gbtimer: GBTimer::default(),
             timer: None,
         }
     }
@@ -42,6 +45,7 @@ impl CpuContext {
         self.t_cycles += 4_u64;
         trace!("cycles {}", self.t_cycles);
         PPU::tick(self);
+        GBTimer::tick(self);
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             self.memory.io[SB] <<= 1;
