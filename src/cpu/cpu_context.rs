@@ -26,6 +26,7 @@ pub struct CpuContext {
     pub t_cycles: u64,
     pub ppu: PPU,
     pub gbtimer: GBTimer,
+    pub serial_message: Vec<u8>,
     timer: Option<Instant>,
 }
 
@@ -38,6 +39,7 @@ impl CpuContext {
             ppu,
             gbtimer: GBTimer::default(),
             timer: None,
+            serial_message: vec![],
         }
     }
 
@@ -83,6 +85,9 @@ impl CpuContext {
             if self.ppu.is_exit() {
                 info!("Cycle count: {}", &self.t_cycles);
                 info!("CPU {:#?}", &self.registers);
+                info!("Last Serial message: {}", {
+                    str::from_utf8(&self.serial_message[..]).unwrap()
+                });
                 trace!("VRAM {:?}", &self.memory.vram[0]);
                 break Ok(());
             }
@@ -146,8 +151,8 @@ impl CpuContext {
                 0x06 | 0x16 | 0x26 | 0x36 | 0x0E | 0x1E | 0x2E | 0x3E | 0x40..0x80 => {
                     loads::load_r8(self, opcode)
                 } // LD r8, r8 | LD r8, [hl] | LD [hl], r8
-                0xEA => loads_16::ld_n16_a(self),       // LD [imm16] A
-                0xFA => loads_16::ld_a_n16(self),       // LD A [imm16]
+                0xEA => loads_16::ld_n16_a(self), // LD [imm16] A
+                0xFA => loads_16::ld_a_n16(self), // LD A [imm16]
                 0x01 | 0x11 | 0x21 | 0x31 => loads_16::load_r16_imm16(self, opcode), // LD r16, imm16
                 0x02 | 0x12 | 0x22 | 0x32 => loads_16::load_r16mem_a(opcode, self), // LD [r16mem] A
                 0x0A | 0x1A | 0x2A | 0x3A => loads_16::load_a_r16mem(opcode, self), // LD A, [r16mem]
