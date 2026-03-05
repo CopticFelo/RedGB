@@ -135,7 +135,7 @@ pub fn daa(context: &mut CpuContext) -> Result<String, GBError> {
         if context.registers.read_flag(Flag::Carry) {
             delta += 0x60;
         }
-        context.registers.a -= delta;
+        context.registers.a = context.registers.a.wrapping_sub(delta);
         context.registers.set_all_flags(&[
             (context.registers.a == 0) as u8,
             context.registers.read_flag(Flag::Subtract) as u8,
@@ -151,7 +151,7 @@ pub fn daa(context: &mut CpuContext) -> Result<String, GBError> {
         if context.registers.read_flag(Flag::Carry) || context.registers.a > 0x99 {
             delta += 0x60;
         }
-        context.registers.a += delta;
+        context.registers.a = context.registers.a.wrapping_add(delta);
         context.registers.set_all_flags(&[
             (context.registers.a == 0) as u8,
             context.registers.read_flag(Flag::Subtract) as u8,
