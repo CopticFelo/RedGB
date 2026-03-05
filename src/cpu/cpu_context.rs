@@ -126,12 +126,12 @@ impl CpuContext {
                 0xE0 => {
                     let addr = 0xFF00 + self.fetch() as u16;
                     MemoryMap::write(self, addr, self.registers.a)?;
-                    Ok(format!("ldh [{}] a", addr))
+                    Ok(format!("ldh [{:#X}] a", addr))
                 } // LDH [A8] A
                 0xF0 => {
                     let addr = 0xFF00 + self.fetch() as u16;
                     self.registers.a = MemoryMap::read(self, addr)?;
-                    Ok(format!("ldh a [{}]", addr))
+                    Ok(format!("ldh a [{:#X}]", addr))
                 } // LDH A [A8]
                 0xE2 => {
                     let addr = 0xFF00 + self.registers.c as u16;
