@@ -4,6 +4,11 @@ use std::{
 };
 
 use log::{debug, error, info, trace};
+use sdl3::{
+    EventPump,
+    render::{TextureCreator, WindowCanvas},
+    video::WindowContext,
+};
 
 use crate::{
     cpu::{
@@ -27,6 +32,7 @@ pub struct CpuContext {
     pub ppu: PPU,
     pub gbtimer: GBTimer,
     pub serial_message: Vec<u8>,
+    pub frame_drawn: bool,
     timer: Option<Instant>,
 }
 
@@ -40,12 +46,13 @@ impl CpuContext {
             gbtimer: GBTimer::default(),
             timer: None,
             serial_message: vec![],
+            frame_drawn: false,
         }
     }
 
     pub fn tick(&mut self) {
         self.t_cycles += 4_u64;
-        trace!("cycles {}", self.t_cycles);
+        // trace!("cycles {}", self.t_cycles);
         PPU::tick(self);
         GBTimer::tick(self);
 
@@ -80,21 +87,16 @@ impl CpuContext {
         result
     }
 
-    pub fn start_exec_cycle(&mut self) -> Result<(), GBError> {
+    pub fn step(&mut self) -> Result<(), GBError> {
+        self.frame_drawn = false;
         loop {
-            if self.ppu.is_exit() {
-                info!("Cycle count: {}", &self.t_cycles);
-                info!("CPU {:#?}", &self.registers);
-                info!("Last Serial message: {}", {
-                    str::from_utf8(&self.serial_message[..]).unwrap()
-                });
-                trace!("VRAM {:?}", &self.memory.vram[0]);
+            if self.frame_drawn {
                 break Ok(());
             }
             if !self.registers.exec {
                 self.tick();
                 self.handle_interupts()?;
-                continue;
+                return Ok(());
             }
             let opcode_addr = self.registers.pc;
             let opcode = self.fetch();
@@ -265,7 +267,7 @@ impl CpuContext {
         match result {
             Ok(s) => {
                 debug!("{:#X}: {:#X} -> {}", opcode_addr, opcode, s);
-                trace!("{:?}", registers);
+                // trace!("{:?}", registers);
                 Ok(())
             }
             Err(err) => match err {
