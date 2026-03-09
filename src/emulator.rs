@@ -39,10 +39,14 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     let ppu = PPU::new();
     let mut context = CpuContext::init(registers, memory, ppu);
     let mut time = Instant::now();
+    let target = Duration::new(0, 16666667);
     loop {
         context.step()?;
-        let elapsed = time.elapsed();
-        info!("time: {} ns", elapsed.as_nanos());
+        if time.elapsed() < target {
+            std::thread::sleep(target.abs_diff(time.elapsed()));
+        }
+        let fps = 1.0 / (time.elapsed().as_secs_f32());
+        info!("fps: {}", fps);
         time = Instant::now();
         for event in event_pump.poll_iter() {
             match event {
@@ -56,6 +60,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
                     info!("Last Serial message: {}", {
                         str::from_utf8(&context.serial_message[..]).unwrap()
                     });
+                    info!("buffer: {:?}", context.ppu.framebuffer);
                     return Ok(());
                 }
                 _ => (),
