@@ -39,7 +39,6 @@ impl PPU {
         if context.memory.io[LY] > 153 {
             context.memory.io[LY] = 0;
         } else if context.memory.io[LY] == 144 {
-            context.frame_drawn = true;
             context.memory.io[0x0F] = alu::set_bit(context.memory.io[0x0F], 0, true);
         }
     }
@@ -80,6 +79,9 @@ impl PPU {
     pub fn draw_scanline(context: &mut CpuContext) -> Result<(), GBError> {
         let lcdc = context.memory.io[LCDC];
         let ly: usize = context.memory.io[LY] as usize;
+        if ly == 143 {
+            context.frame_drawn = true;
+        }
         let scx = context.memory.io[SCX] as usize;
         let scy = context.memory.io[SCY] as usize;
         let map_col = (scx >> 3) & 31;
