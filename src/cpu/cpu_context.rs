@@ -83,7 +83,7 @@ impl CpuContext {
             if !self.registers.exec {
                 self.tick();
                 self.handle_interupts()?;
-                return Ok(());
+                continue;
             }
             let opcode_addr = self.registers.pc;
             let opcode = self.fetch();
