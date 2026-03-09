@@ -29,7 +29,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     let mut canvas = window.into_canvas();
     let texture_creator = canvas.texture_creator();
     let mut texture = texture_creator
-        .create_texture_streaming(PixelFormat::RGBA8888, 160, 144)
+        .create_texture_streaming(PixelFormat::RGB24, 160, 144)
         .expect("Error: Could not create streaming texture");
     let mut event_pump = sdl_context
         .event_pump()

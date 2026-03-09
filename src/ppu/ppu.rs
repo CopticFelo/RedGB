@@ -22,7 +22,7 @@ impl PPU {
     pub fn new() -> Self {
         Self {
             last_cycle: 0,
-            framebuffer: vec![0x0; 160 * 144 * 4],
+            framebuffer: vec![0x0; 160 * 144 * 3],
         }
     }
 
@@ -61,7 +61,7 @@ impl PPU {
         );
         tile_line
     }
-    pub fn color_from_bgb(pixel_color: u8, context: &mut CpuContext) -> [u8; 4] {
+    pub fn color_from_bgb(pixel_color: u8, context: &mut CpuContext) -> [u8; 3] {
         let bgb = context.memory.io[BGP];
         let ids = [
             alu::read_bits(bgb, 0, 2),
@@ -70,10 +70,10 @@ impl PPU {
             alu::read_bits(bgb, 6, 2),
         ];
         match ids[pixel_color as usize] {
-            0 => [0xFF, 0xFF, 0xFF, 0xFF],
-            1 => [0xD3, 0xD3, 0xD3, 0xFF],
-            2 => [0x69, 0x69, 0x69, 0xFF],
-            3 => [0x00, 0x00, 0x00, 0xFF],
+            0 => [0xFF, 0xFF, 0xFF],
+            1 => [0xD3, 0xD3, 0xD3],
+            2 => [0x69, 0x69, 0x69],
+            3 => [0x0, 0x0, 0x0],
             _ => unreachable!(),
         }
     }
@@ -109,10 +109,10 @@ impl PPU {
             for j in (0..8).rev() {
                 let pixel_color =
                     (alu::read_bits(tile.0, j as u8, 1) << 1) + alu::read_bits(tile.1, j as u8, 1);
-                let rgba = PPU::color_from_bgb(pixel_color, context);
-                let framebuffer_index = (ly * 160 + (7 - j) + i * 8) * 4;
-                context.ppu.framebuffer[framebuffer_index..framebuffer_index + 4]
-                    .copy_from_slice(&rgba);
+                let rgb = PPU::color_from_bgb(pixel_color, context);
+                let framebuffer_index = (ly * 160 + (7 - j) + i * 8) * 3;
+                context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
+                    .copy_from_slice(&rgb);
             }
             i += 1;
             if i >= 32 {
