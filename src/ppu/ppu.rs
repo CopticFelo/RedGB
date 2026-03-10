@@ -113,9 +113,11 @@ impl PPU {
                 tile_index,
                 ((ly as u8).wrapping_add(scy as u8)) & 7,
             );
-            let pixel_offset = if i == 0 { 8 - (scx & 7) } else { 0 };
+            // calculate pixel offsets because of scx
+            let pixel_start = 8 - (scx & 7);
+            let pixel_end = (scx & 7);
             // fill the next 8 bits with pixel data
-            for j in (0..8).rev() {
+            for j in (pixel_end..pixel_start).rev() {
                 let pixel_color =
                     (alu::read_bits(tile.0, j as u8, 1) << 1) + alu::read_bits(tile.1, j as u8, 1);
                 let rgb = PPU::color_from_bgb(pixel_color, context);
