@@ -38,6 +38,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     let memory = map::MemoryMap::init_rom(rom, header_data);
     let ppu = PPU::new();
     let mut context = CpuContext::init(registers, memory, ppu);
+    context.memory.io[0x0] = 255;
     let mut time = Instant::now();
     let target = Duration::new(0, 16666667);
     loop {
@@ -62,6 +63,18 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
                     });
                     info!("buffer: {:?}", context.ppu.framebuffer);
                     return Ok(());
+                }
+                Event::KeyDown { keycode, .. } => {
+                    info!("Key down");
+                    if let Some(key) = keycode {
+                        context.handle_joypad(key, true);
+                    }
+                }
+                Event::KeyUp { keycode, .. } => {
+                    info!("Key down");
+                    if let Some(key) = keycode {
+                        context.handle_joypad(key, false);
+                    }
                 }
                 _ => (),
             }

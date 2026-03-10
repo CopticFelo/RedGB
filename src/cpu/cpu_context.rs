@@ -6,6 +6,7 @@ use std::{
 use log::{debug, error, info, trace};
 use sdl3::{
     EventPump,
+    keyboard::Keycode,
     render::{TextureCreator, WindowCanvas},
     video::WindowContext,
 };
@@ -58,6 +59,25 @@ impl CpuContext {
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             self.memory.io[SB] <<= 1;
+        }
+    }
+
+    pub fn handle_joypad(&mut self, keycode: Keycode, is_down: bool) {
+        let mut joypad_reg = self.memory.io[0];
+        let bit = match keycode {
+            Keycode::Return | Keycode::Down => Some(3),
+            Keycode::C | Keycode::Up => Some(2),
+            Keycode::X | Keycode::Left => Some(1),
+            Keycode::Z | Keycode::Right => Some(0),
+            _ => None,
+        };
+        if let Some(index) = bit {
+            joypad_reg = alu::set_bit(joypad_reg, index, !is_down);
+            if (alu::read_bits(joypad_reg, 4, 1) == 0 || alu::read_bits(joypad_reg, 5, 1) == 0)
+                && is_down
+            {
+                self.memory.io[0x0F] = alu::set_bit(self.memory.io[0x0F], 4, true);
+            }
         }
     }
 

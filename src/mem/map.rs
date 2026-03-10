@@ -94,6 +94,11 @@ impl MemoryMap {
             0xFF00..=0xFF7F => {
                 let byte = context.memory.io.get_mut(addr - 0xFF00);
                 match addr {
+                    0xFF00 => {
+                        let reg = byte.unwrap();
+                        *reg = (*reg & 0xCF) | (value & 0x30);
+                        return Ok(());
+                    }
                     0xFF01 => {
                         context.serial_message.push(value);
                     }
