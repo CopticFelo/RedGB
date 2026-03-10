@@ -59,7 +59,7 @@ impl PPU {
         let addr = if base_ptr == 0x8000 {
             base_ptr + (16_usize * tile_index as usize)
         } else {
-            (base_ptr as isize + (16_isize * tile_index as isize)) as usize
+            (base_ptr as isize + (16_isize * tile_index as i8 as isize)) as usize
         } + (2 * tile_row) as usize;
         let tile_line: (u8, u8) = (
             MemoryMap::dma_read(context, addr).unwrap(),
