@@ -7,8 +7,11 @@ use crate::cpu::cpu_context::CpuContext;
 use crate::error::GBError;
 use crate::mem::map::MemoryMap;
 
+const IF: usize = 0x0F;
 const LCDC: usize = 0x40;
+const STAT: usize = 0x41;
 const LY: usize = 0x44;
+const LYC: usize = 0x45;
 const BGP: usize = 0x47;
 const SCY: usize = 0x42;
 const SCX: usize = 0x43;
@@ -36,7 +39,11 @@ impl PPU {
             trace!("LY: {}", context.memory.io[LY]);
             trace!("Framebuffer: {:#?}", &context.ppu.framebuffer[0..20]);
         }
-        if context.memory.io[LY] > 153 {
+        let lyc_interrupt = alu::read_bits(context.memory.io[STAT], 6, 1) == 1;
+        if context.memory.io[LY] == context.memory.io[LYC] && lyc_interrupt {
+            alu::set_bit(context.memory.io[IF], 1, true);
+            alu::set_bit(context.memory.io[STAT], 2, true);
+        } else if context.memory.io[LY] > 153 {
             context.memory.io[LY] = 0;
         } else if context.memory.io[LY] == 144 {
             context.memory.io[0x0F] = alu::set_bit(context.memory.io[0x0F], 0, true);
