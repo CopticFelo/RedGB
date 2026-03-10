@@ -14,5 +14,5 @@ cargo run -- path/to/rom.gb
 - [x] Serial port
 - [ ] PPU
 - [ ] Sound
-- [ ] Input
+- [x] Input
 - [ ] GUI
