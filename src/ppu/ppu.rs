@@ -102,7 +102,8 @@ impl PPU {
         let mut i = map_col;
         // Loop over 20 tiles in tile map (each scanline is 20 tiles across at most)
         // be careful of boundries because scx offset
-        for _ in 0..20 {
+        let mut pixels_drawn = 0;
+        for index in 0..20 {
             // get tile index for tile map using (map_addr + i)
             let tile_index = MemoryMap::dma_read(context, map_addr + i)?;
             // fetch the 2 bytes that form a line in a tile
@@ -114,21 +115,19 @@ impl PPU {
                 ((ly as u8).wrapping_add(scy as u8)) & 7,
             );
             // calculate pixel offsets because of scx
-            let pixel_start = 8 - (scx & 7);
-            let pixel_end = (scx & 7);
+            let pixel_start = if i == 0 { 8 - (scx & 7) } else { 8 };
+            let pixel_end = if i == 19 { scx & 7 } else { 0 };
             // fill the next 8 bits with pixel data
             for j in (pixel_end..pixel_start).rev() {
                 let pixel_color =
                     (alu::read_bits(tile.0, j as u8, 1) << 1) + alu::read_bits(tile.1, j as u8, 1);
                 let rgb = PPU::color_from_bgb(pixel_color, context);
-                let framebuffer_index = (ly * 160 + (7 - j) + i * 8) * 3;
+                let framebuffer_index = (ly * 160 + (7 - j) + pixels_drawn) * 3;
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
                     .copy_from_slice(&rgb);
             }
-            i += 1;
-            if i >= 32 {
-                i = 0;
-            }
+            pixels_drawn += 8;
+            i = (i + 1) & 31;
         }
         Ok(())
     }
