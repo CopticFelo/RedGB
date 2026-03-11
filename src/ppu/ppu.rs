@@ -77,9 +77,14 @@ impl PPU {
         }
         Ok(sprite_table)
     }
-    pub fn fetch_tile_line(context: &mut CpuContext, tile_index: u8, tile_row: u8) -> (u8, u8) {
+    pub fn fetch_tile_line(
+        context: &mut CpuContext,
+        tile_index: u8,
+        tile_row: u8,
+        is_obj: bool,
+    ) -> (u8, u8) {
         let lcdc = context.memory.io[LCDC];
-        let base_ptr = if alu::read_bits(lcdc, 4, 1) == 1 {
+        let base_ptr = if alu::read_bits(lcdc, 4, 1) == 1 || is_obj {
             0x8000
         } else {
             0x9000
@@ -141,6 +146,7 @@ impl PPU {
                 context,
                 tile_index,
                 ((ly as u8).wrapping_add(scy as u8)) & 7,
+                false,
             );
             // calculate pixel offsets because of scx
             let pixel_start = if i == 0 { 8 - (scx & 7) } else { 8 };
