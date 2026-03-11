@@ -185,9 +185,6 @@ impl PPU {
                     + alu::read_bits(tile_line.1, bit, 1);
                 let rgb = PPU::color_from_bgb(pixel_color, context);
                 let framebuffer_index = (ly * 160 + first_visible + (7 - bit as usize)) * 3;
-                if framebuffer_index >= 69120 {
-                    print!("");
-                }
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
                     .copy_from_slice(&rgb);
             }
