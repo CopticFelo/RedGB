@@ -14,6 +14,8 @@ const STAT: usize = 0x41;
 const LY: usize = 0x44;
 const LYC: usize = 0x45;
 const BGP: usize = 0x47;
+const OBP0: usize = 0x48;
+const OBP1: usize = 0x49;
 const SCY: usize = 0x42;
 const SCX: usize = 0x43;
 
@@ -100,13 +102,12 @@ impl PPU {
         );
         tile_line
     }
-    pub fn color_from_bgb(pixel_color: u8, context: &mut CpuContext) -> [u8; 3] {
-        let bgb = context.memory.io[BGP];
+    pub fn color_from(pixel_color: u8, palette: u8, context: &mut CpuContext) -> [u8; 3] {
         let ids = [
-            alu::read_bits(bgb, 0, 2),
-            alu::read_bits(bgb, 2, 2),
-            alu::read_bits(bgb, 4, 2),
-            alu::read_bits(bgb, 6, 2),
+            alu::read_bits(palette, 0, 2),
+            alu::read_bits(palette, 2, 2),
+            alu::read_bits(palette, 4, 2),
+            alu::read_bits(palette, 6, 2),
         ];
         match ids[pixel_color as usize] {
             0 => [0xFF, 0xFF, 0xFF],
@@ -155,7 +156,7 @@ impl PPU {
             for j in (pixel_end..pixel_start).rev() {
                 let pixel_color =
                     (alu::read_bits(tile.0, j as u8, 1) << 1) + alu::read_bits(tile.1, j as u8, 1);
-                let rgb = PPU::color_from_bgb(pixel_color, context);
+                let rgb = PPU::color_from(pixel_color, context.memory.io[BGP], context);
                 let framebuffer_index = (ly * 160 + (7 - j) + pixels_drawn) * 3;
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
                     .copy_from_slice(&rgb);
@@ -180,13 +181,14 @@ impl PPU {
             if sprite.x_flip {
                 std::mem::swap(&mut pixel_end, &mut pixel_start);
             }
+            let palette = context.memory.io[if sprite.dmg_palette == 0 { OBP0 } else { OBP1 }];
             for bit in (pixel_end..pixel_start).rev() {
                 let pixel_color = (alu::read_bits(tile_line.0, bit, 1) << 1)
                     + alu::read_bits(tile_line.1, bit, 1);
                 if pixel_color == 0 {
                     continue;
                 }
-                let rgb = PPU::color_from_bgb(pixel_color, context);
+                let rgb = PPU::color_from(pixel_color, palette, context);
                 let framebuffer_index = (ly * 160 + first_visible + (7 - bit as usize)) * 3;
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
                     .copy_from_slice(&rgb);
