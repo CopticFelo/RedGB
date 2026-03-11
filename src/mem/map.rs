@@ -35,7 +35,7 @@ impl MemoryMap {
             active_eram: 1,
             wram: vec![vec![0; 0x2000]; 8],
             active_wram: 1,
-            oam: vec![0; 0x100],
+            oam: vec![0; 0xA0],
             io: vec![0; 0x80],
             hram: vec![0; 0x7F],
             ie: 0,
@@ -96,9 +96,9 @@ impl MemoryMap {
                 return Ok(());
             }
             0xFF00..=0xFF7F => {
-                let byte = context.memory.io.get_mut(addr - 0xFF00);
                 match addr {
                     0xFF00 => {
+                        let byte = context.memory.io.get_mut(addr - 0xFF00);
                         let reg = byte.unwrap();
                         *reg = alu::set_bit(*reg, 4, alu::read_bits(value, 4, 1) == 1);
                         *reg = alu::set_bit(*reg, 5, alu::read_bits(value, 5, 1) == 1);
@@ -108,12 +108,16 @@ impl MemoryMap {
                         context.serial_message.push(value);
                     }
                     0xFF04 => {
+                        let byte = context.memory.io.get_mut(addr - 0xFF00);
                         *byte.unwrap() = 0;
                         return Ok(());
                     }
+                    0xFF46 => {
+                        MemoryMap::oam_transfer(context, value);
+                    }
                     _ => (),
                 };
-                byte
+                context.memory.io.get_mut(addr - 0xFF00)
             }
             0xFF80..=0xFFFE => context.memory.hram.get_mut(addr - 0xFF80),
             0xFFFF => Some(&mut context.memory.ie),
@@ -135,5 +139,38 @@ impl MemoryMap {
     pub fn write(context: &mut CpuContext, addr: u16, value: u8) -> Result<(), GBError> {
         context.tick();
         MemoryMap::dma_write(context, addr as usize, value)
+    }
+    /// +160 M-C (640 T-C)
+    pub fn oam_transfer(context: &mut CpuContext, addr: u8) {
+        let src_addr = addr as usize * 0x100;
+        let slice = match src_addr {
+            0x0000..=0x3FFF => Some(&context.memory.rom_banks[0][src_addr..=src_addr + 0x9F]),
+            0x4000..=0x7FFF => {
+                let real_addr = src_addr - 0x4000;
+                Some(
+                    &context.memory.rom_banks[context.memory.active_rom_bank]
+                        [real_addr..=real_addr + 0x9F],
+                )
+            }
+            0xC000..=0xCFFF => {
+                let real_addr = src_addr - 0xC000;
+                Some(&context.memory.wram[0][real_addr..=real_addr + 0x9F])
+            }
+            0xD000..=0xDFFF => {
+                let real_addr = src_addr - 0xD000;
+                Some(&context.memory.wram[0][real_addr..=real_addr + 0x9F])
+            }
+            0xE000..=0xEFFF => {
+                let real_addr = src_addr - 0xE000;
+                Some(&context.memory.wram[0][real_addr..=real_addr + 0x9F])
+            }
+            _ => None,
+        };
+        if let Some(oam_data) = slice {
+            context.memory.oam.copy_from_slice(oam_data);
+        }
+        for _ in 0..160 {
+            context.tick();
+        }
     }
 }
