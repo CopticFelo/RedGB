@@ -60,7 +60,7 @@ impl PPU {
             let first_visible = if y < 0 { 0 } else { y as u8 };
             let tile_index = MemoryMap::dma_read(context, obj_addr + 2)?;
             let attributes = MemoryMap::dma_read(context, obj_addr + 3)?;
-            if (ly - 7..=ly).contains(&first_visible) && index < 10 {
+            if (ly.saturating_sub(7)..=ly).contains(&first_visible) && index < 10 {
                 sprite_table[index] = Some(GBSprite {
                     x,
                     y,
