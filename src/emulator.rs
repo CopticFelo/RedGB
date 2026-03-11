@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use log::info;
+use log::{debug, info};
 use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::gpu::Buffer;
@@ -47,7 +47,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
             std::thread::sleep(target.abs_diff(time.elapsed()));
         }
         let fps = 1.0 / (time.elapsed().as_secs_f32());
-        info!("fps: {}", fps);
+        debug!("fps: {}", fps);
         time = Instant::now();
         for event in event_pump.poll_iter() {
             match event {
@@ -61,7 +61,6 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
                     info!("Last Serial message: {}", {
                         str::from_utf8(&context.serial_message[..]).unwrap()
                     });
-                    info!("buffer: {:?}", context.ppu.framebuffer);
                     return Ok(());
                 }
                 Event::KeyDown {
@@ -77,9 +76,6 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
                 _ => (),
             }
         }
-        // texture
-        //     .update(None, &context.ppu.framebuffer[..], 160 * 4)
-        //     .unwrap();
         texture
             .with_lock(None, |buffer: &mut [u8], _: usize| {
                 buffer.copy_from_slice(context.ppu.framebuffer.as_slice());
