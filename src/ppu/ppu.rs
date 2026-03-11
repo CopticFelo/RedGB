@@ -183,6 +183,9 @@ impl PPU {
             for bit in (pixel_end..pixel_start).rev() {
                 let pixel_color = (alu::read_bits(tile_line.0, bit, 1) << 1)
                     + alu::read_bits(tile_line.1, bit, 1);
+                if pixel_color == 0 {
+                    continue;
+                }
                 let rgb = PPU::color_from_bgb(pixel_color, context);
                 let framebuffer_index = (ly * 160 + first_visible + (7 - bit as usize)) * 3;
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
