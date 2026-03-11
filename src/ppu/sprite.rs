@@ -1,7 +1,7 @@
 #[derive(Clone, Copy)]
 pub struct GBSprite {
-    pub x: i8,
-    pub y: i8,
+    pub x: i16,
+    pub y: i16,
     pub tile_index: u8,
     pub priority: u8,
     pub y_flip: bool,

@@ -54,9 +54,9 @@ impl PPU {
         let mut sprite_table = [None; 10];
         let ly = context.memory.io[LY];
         let mut index = 0;
-        for obj_addr in (0xFE00..0xFF00).step_by(4) {
-            let y = MemoryMap::dma_read(context, obj_addr)? as i8 - 16;
-            let x = MemoryMap::dma_read(context, obj_addr + 1)? as i8 - 8;
+        for obj_addr in (0xFE00..0xFEA0).step_by(4) {
+            let y = (MemoryMap::dma_read(context, obj_addr)? as u16 as i16) - 16;
+            let x = (MemoryMap::dma_read(context, obj_addr + 1)? as u16 as i16) - 8;
             let first_visible = if y < 0 { 0 } else { y as u8 };
             let tile_index = MemoryMap::dma_read(context, obj_addr + 2)?;
             let attributes = MemoryMap::dma_read(context, obj_addr + 3)?;
@@ -162,6 +162,29 @@ impl PPU {
             }
             pixels_drawn += 8;
             i = (i + 1) & 31;
+        }
+        // Draw sprites
+        let sprite_table = PPU::fetch_from_oam(context)?;
+        for sprite in sprite_table.into_iter().flatten() {
+            let tile_row = (ly.wrapping_sub_signed(sprite.y as isize) as u8) & 7;
+            let tile_line = PPU::fetch_tile_line(context, sprite.tile_index, tile_row, true);
+            let (pixel_start, first_visible) = if sprite.x < 0 {
+                ((8 + sprite.x) as u8, 0)
+            } else {
+                (8, sprite.x as usize)
+            };
+            let pixel_end = (sprite.x as u8).saturating_sub(160);
+            for bit in (pixel_end..pixel_start).rev() {
+                let pixel_color = (alu::read_bits(tile_line.0, bit, 1) << 1)
+                    + alu::read_bits(tile_line.1, bit, 1);
+                let rgb = PPU::color_from_bgb(pixel_color, context);
+                let framebuffer_index = (ly * 160 + first_visible + (7 - bit as usize)) * 3;
+                if framebuffer_index >= 69120 {
+                    print!("");
+                }
+                context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
+                    .copy_from_slice(&rgb);
+            }
         }
         Ok(())
     }
