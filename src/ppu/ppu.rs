@@ -166,14 +166,20 @@ impl PPU {
         // Draw sprites
         let sprite_table = PPU::fetch_from_oam(context)?;
         for sprite in sprite_table.into_iter().flatten() {
-            let tile_row = (ly.wrapping_sub_signed(sprite.y as isize) as u8) & 7;
+            let mut tile_row = (ly.wrapping_sub_signed(sprite.y as isize) as u8) & 7;
+            if sprite.y_flip {
+                tile_row = 7 - tile_row;
+            }
             let tile_line = PPU::fetch_tile_line(context, sprite.tile_index, tile_row, true);
-            let (pixel_start, first_visible) = if sprite.x < 0 {
+            let (mut pixel_start, first_visible) = if sprite.x < 0 {
                 ((8 + sprite.x) as u8, 0)
             } else {
                 (8, sprite.x as usize)
             };
-            let pixel_end = (sprite.x as u8).saturating_sub(160);
+            let mut pixel_end = (sprite.x as u8).saturating_sub(160);
+            if sprite.x_flip {
+                std::mem::swap(&mut pixel_end, &mut pixel_start);
+            }
             for bit in (pixel_end..pixel_start).rev() {
                 let pixel_color = (alu::read_bits(tile_line.0, bit, 1) << 1)
                     + alu::read_bits(tile_line.1, bit, 1);
