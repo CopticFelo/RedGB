@@ -91,7 +91,7 @@ impl PPU {
         }
         let scx = context.memory.io[SCX] as usize;
         let scy = context.memory.io[SCY] as usize;
-        let map_col = (scx >> 3) & 31;
+        let map_col = (scx >> 3);
         let map_row = ((ly + scy) >> 3) & 31;
         let map_addr = if alu::read_bits(lcdc, 3, 1) == 1 {
             0x9C00_usize
