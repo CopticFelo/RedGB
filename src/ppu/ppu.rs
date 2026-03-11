@@ -6,6 +6,7 @@ use crate::cpu::alu;
 use crate::cpu::cpu_context::CpuContext;
 use crate::error::GBError;
 use crate::mem::map::MemoryMap;
+use crate::ppu::sprite::GBSprite;
 
 const IF: usize = 0x0F;
 const LCDC: usize = 0x40;
@@ -48,6 +49,33 @@ impl PPU {
         } else if context.memory.io[LY] == 144 {
             context.memory.io[0x0F] = alu::set_bit(context.memory.io[0x0F], 0, true);
         }
+    }
+    pub fn fetch_from_oam(context: &mut CpuContext) -> Result<[Option<GBSprite>; 10], GBError> {
+        let mut sprite_table = [None; 10];
+        let ly = context.memory.io[LY];
+        let mut index = 0;
+        for obj_addr in (0xFE00..0xFF00).step_by(4) {
+            let y = MemoryMap::dma_read(context, obj_addr)? as i8 - 16;
+            let x = MemoryMap::dma_read(context, obj_addr + 1)? as i8 - 8;
+            let first_visible = if y < 0 { 0 } else { y as u8 };
+            let tile_index = MemoryMap::dma_read(context, obj_addr + 2)?;
+            let attributes = MemoryMap::dma_read(context, obj_addr + 3)?;
+            if (ly - 7..=ly).contains(&first_visible) && index < 10 {
+                sprite_table[index] = Some(GBSprite {
+                    x,
+                    y,
+                    tile_index,
+                    priority: alu::read_bits(attributes, 7, 1),
+                    y_flip: alu::read_bits(attributes, 6, 1) == 1,
+                    x_flip: alu::read_bits(attributes, 5, 1) == 1,
+                    dmg_palette: alu::read_bits(attributes, 4, 1),
+                    bank: alu::read_bits(attributes, 3, 1),
+                    cgb_palette: alu::read_bits(attributes, 0, 3),
+                });
+                index += 1;
+            }
+        }
+        Ok(sprite_table)
     }
     pub fn fetch_tile_line(context: &mut CpuContext, tile_index: u8, tile_row: u8) -> (u8, u8) {
         let lcdc = context.memory.io[LCDC];
