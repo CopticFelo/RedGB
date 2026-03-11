@@ -1,4 +1,8 @@
-use crate::{cpu::cpu_context::CpuContext, error::GBError, rom::rom_info::ROMInfo};
+use crate::{
+    cpu::{alu, cpu_context::CpuContext},
+    error::GBError,
+    rom::rom_info::ROMInfo,
+};
 
 #[derive(Debug)]
 pub struct MemoryMap {
@@ -96,7 +100,8 @@ impl MemoryMap {
                 match addr {
                     0xFF00 => {
                         let reg = byte.unwrap();
-                        *reg = (*reg & 0xCF) | (value & 0x30);
+                        *reg = alu::set_bit(*reg, 4, alu::read_bits(value, 4, 1) == 1);
+                        *reg = alu::set_bit(*reg, 5, alu::read_bits(value, 5, 1) == 1);
                         return Ok(());
                     }
                     0xFF01 => {
