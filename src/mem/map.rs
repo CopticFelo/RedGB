@@ -102,6 +102,9 @@ impl MemoryMap {
                         let reg = byte.unwrap();
                         *reg = alu::set_bit(*reg, 4, alu::read_bits(value, 4, 1) == 1);
                         *reg = alu::set_bit(*reg, 5, alu::read_bits(value, 5, 1) == 1);
+                        if let Some(key) = context.last_key {
+                            context.handle_joypad(key, true);
+                        }
                         return Ok(());
                     }
                     0xFF01 => {
