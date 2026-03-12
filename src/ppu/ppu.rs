@@ -183,6 +183,9 @@ impl PPU {
             }
             let palette = context.memory.io[if sprite.dmg_palette == 0 { OBP0 } else { OBP1 }];
             for bit in (pixel_end..pixel_start).rev() {
+                if bit > 7 {
+                    continue;
+                }
                 let pixel_color = (alu::read_bits(tile_line.0, bit, 1) << 1)
                     + alu::read_bits(tile_line.1, bit, 1);
                 if pixel_color == 0 {
