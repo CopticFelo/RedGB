@@ -63,7 +63,7 @@ pub fn call(context: &mut CpuContext, opcode: u8) -> Result<String, GBError> {
 pub fn ret(context: &mut CpuContext, opcode: u8) -> Result<String, GBError> {
     let mut log = String::from("ret");
     if opcode == 0xD9 {
-        context.memory.ie = 1;
+        context.registers.ime = true;
         log += "i";
     }
     if opcode != 0xC9 && opcode != 0xD9 {
