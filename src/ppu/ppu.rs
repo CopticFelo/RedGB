@@ -1,5 +1,6 @@
 extern crate sdl3;
 
+use itertools::Either;
 use log::{debug, info, trace};
 
 use crate::cpu::alu;
@@ -59,10 +60,14 @@ impl PPU {
         for obj_addr in (0xFE00..0xFEA0).step_by(4) {
             let y = (MemoryMap::dma_read(context, obj_addr)? as u16 as i16) - 16;
             let x = (MemoryMap::dma_read(context, obj_addr + 1)? as u16 as i16) - 8;
-            let first_visible = if y < 0 { 0 } else { y as u8 };
             let tile_index = MemoryMap::dma_read(context, obj_addr + 2)?;
             let attributes = MemoryMap::dma_read(context, obj_addr + 3)?;
-            if (ly.saturating_sub(7)..=ly).contains(&first_visible) && index < 10 {
+            let obj_size = if alu::read_bits(context.memory.io[LCDC], 2, 1) == 1 {
+                15
+            } else {
+                7
+            };
+            if ((ly as isize - obj_size)..=ly as isize).contains(&(y as isize)) && index < 10 {
                 sprite_table[index] = Some(GBSprite {
                     x,
                     y,
@@ -167,22 +172,29 @@ impl PPU {
         // Draw sprites
         let sprite_table = PPU::fetch_from_oam(context)?;
         for sprite in sprite_table.into_iter().flatten() {
-            let mut tile_row = (ly.wrapping_sub_signed(sprite.y as isize) as u8) & 7;
+            let tile_height = if alu::read_bits(context.memory.io[LCDC], 2, 1) == 1 {
+                15
+            } else {
+                7
+            };
+            let mut tile_row = (ly as isize - sprite.y as isize) as u8;
             if sprite.y_flip {
-                tile_row = 7 - tile_row;
+                tile_row = tile_height - tile_row;
             }
             let tile_line = PPU::fetch_tile_line(context, sprite.tile_index, tile_row, true);
-            let (mut pixel_start, first_visible) = if sprite.x < 0 {
+            let (pixel_start, first_visible) = if sprite.x < 0 {
                 ((8 + sprite.x) as u8, 0)
             } else {
                 (8, sprite.x as usize)
             };
-            let mut pixel_end = (sprite.x as u8).saturating_sub(160);
-            if sprite.x_flip {
-                std::mem::swap(&mut pixel_end, &mut pixel_start);
-            }
+            let pixel_end = (sprite.x as u8).saturating_sub(160);
+            let draw_range = if sprite.x_flip {
+                Either::Left(pixel_end..pixel_start)
+            } else {
+                Either::Right((pixel_end..pixel_start).rev())
+            };
             let palette = context.memory.io[if sprite.dmg_palette == 0 { OBP0 } else { OBP1 }];
-            for bit in (pixel_end..pixel_start).rev() {
+            for (offest, bit) in draw_range.enumerate() {
                 if bit > 7 {
                     continue;
                 }
@@ -192,7 +204,7 @@ impl PPU {
                     continue;
                 }
                 let rgb = PPU::color_from(pixel_color, palette, context);
-                let framebuffer_index = (ly * 160 + first_visible + (7 - bit as usize)) * 3;
+                let framebuffer_index = (ly * 160 + first_visible + offest) * 3;
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
                     .copy_from_slice(&rgb);
             }
