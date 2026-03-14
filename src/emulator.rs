@@ -70,12 +70,12 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
                 Event::KeyDown {
                     keycode: Some(key), ..
                 } => {
-                    context.handle_joypad(key, true);
+                    context.joypad.update(key, true);
                 }
                 Event::KeyUp {
                     keycode: Some(key), ..
                 } => {
-                    context.handle_joypad(key, false);
+                    context.joypad.update(key, false);
                 }
                 _ => (),
             }

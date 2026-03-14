@@ -15,6 +15,7 @@ use crate::{
     cpu::{
         alu,
         handlers::*,
+        input::Joypad,
         reg_file::{Flag, RegFile},
         timer::GBTimer,
     },
@@ -35,7 +36,7 @@ pub struct CpuContext {
     pub serial_message: Vec<u8>,
     pub frame_drawn: bool,
     timer: Option<Instant>,
-    pub last_key: Option<Keycode>,
+    pub joypad: Joypad,
 }
 
 impl CpuContext {
@@ -49,7 +50,7 @@ impl CpuContext {
             timer: None,
             serial_message: vec![],
             frame_drawn: false,
-            last_key: None,
+            joypad: Joypad::default(),
         }
     }
 
@@ -61,36 +62,6 @@ impl CpuContext {
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             self.memory.io[SB] <<= 1;
-        }
-    }
-
-    pub fn handle_joypad(&mut self, keycode: Keycode, is_down: bool) {
-        let joypad_reg = &mut self.memory.io[0];
-        let is_directional = keycode == Keycode::Up
-            || keycode == Keycode::Down
-            || keycode == Keycode::Left
-            || keycode == Keycode::Right;
-        let bit = match keycode {
-            Keycode::Return | Keycode::Down => Some(3),
-            Keycode::C | Keycode::Up => Some(2),
-            Keycode::X | Keycode::Left => Some(1),
-            Keycode::Z | Keycode::Right => Some(0),
-            _ => None,
-        };
-        if let Some(index) = bit {
-            if is_down {
-                self.last_key = Some(keycode);
-            } else {
-                self.last_key = None;
-            }
-            if !is_down {
-                *joypad_reg = alu::set_bit(*joypad_reg, index, true);
-            } else if ((alu::read_bits(*joypad_reg, 4, 1) == 0) && is_directional)
-                || ((alu::read_bits(*joypad_reg, 5, 1) == 0) && !is_directional)
-            {
-                *joypad_reg = alu::set_bit(*joypad_reg, index, !is_down);
-                self.memory.io[0x0F] = alu::set_bit(self.memory.io[0x0F], 4, true);
-            }
         }
     }
 
