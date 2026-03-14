@@ -37,6 +37,10 @@ impl PPU {
         if context.t_cycles.abs_diff(context.ppu.last_cycle) >= 456 {
             if context.memory.io[LY] < 144 {
                 let _ = PPU::draw_scanline(context);
+                let h_blank = alu::read_bits(context.memory.io[STAT], 3, 1) == 1;
+                if h_blank {
+                    context.memory.io[IF] = alu::set_bit(context.memory.io[IF], 1, true);
+                }
             }
             context.memory.io[LY] = context.memory.io[LY].wrapping_add(1);
             context.ppu.last_cycle = context.t_cycles;
