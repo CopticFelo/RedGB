@@ -31,7 +31,8 @@ impl MemoryMap {
             rom_banks,
             vram: vec![vec![0; 0x2000]; 2],
             active_vram: 0,
-            eram: vec![vec![0; 0x2000]; header_data.mem_banks as usize],
+            // HACK: This is wrong
+            eram: vec![vec![0; 0x2000]; header_data.mem_banks as usize + 2],
             active_eram: 1,
             wram: vec![vec![0; 0x2000]; 8],
             active_wram: 1,
