@@ -133,46 +133,34 @@ impl PPU {
         let scx = context.memory.io[SCX] as usize;
         log::info!("SCX: {}", scx);
         let scy = context.memory.io[SCY] as usize;
-        let map_col = scx >> 3;
+        let mut map_col = scx >> 3;
         let map_row = ((ly + scy) >> 3) & 31;
         let map_addr = if alu::read_bits(lcdc, 3, 1) == 1 {
             0x9C00_usize
         } else {
             0x9800_usize
         } + map_row * 32;
-        // i is a map horizontal offset
-        let mut i = map_col;
-        // Loop over 20 tiles in tile map (each scanline is 20 tiles across at most)
-        // be careful of boundries because scx offset
-        let mut pixels_drawn = 0;
-        for _ in 0..20 {
-            // get tile index for tile map using (map_addr + i)
-            let tile_index = MemoryMap::dma_read(context, map_addr + i)?;
-            // fetch the 2 bytes that form a line in a tile
-            // the line we want is calculated by (ly + scy) % 8
-            // because ly and scy are pixel offsets
-            let tile = PPU::fetch_tile_line(
-                context,
-                tile_index,
-                ((ly as u8).wrapping_add(scy as u8)) & 7,
-                false,
-            );
-            // calculate pixel offsets because of scx
-            let pixel_start = if i == 0 { 8 - (scx & 7) } else { 8 };
-            let pixel_end = if i == 19 { scx & 7 } else { 0 };
-            // fill the next 8 bits with pixel data
-            for j in (pixel_end..pixel_start).rev() {
-                let pixel_color =
-                    (alu::read_bits(tile.0, j as u8, 1) << 1) + alu::read_bits(tile.1, j as u8, 1);
-                let rgb = PPU::color_from(pixel_color, context.memory.io[BGP]);
-                let framebuffer_index = (ly * 160 + (7 - j) + pixels_drawn) * 3;
-                context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
-                    .copy_from_slice(&rgb);
-            }
-            pixels_drawn += 8;
-            i = (i + 1) & 31;
+        let pixel_row = ((ly + scy) & 7) as u8;
+        if scx > 0 {
+            print!("");
         }
-        // Draw sprites
+        let mut tile_index = MemoryMap::dma_read(context, map_addr + map_col)?;
+        let mut tile = PPU::fetch_tile_line(context, tile_index, pixel_row, false);
+        for (offset, virtual_index) in (scx..(scx + 160)).enumerate() {
+            let tilemap_pixel_index = virtual_index & 255;
+            let new_map_col = tilemap_pixel_index >> 3;
+            if map_col != new_map_col {
+                map_col = new_map_col;
+                tile_index = MemoryMap::dma_read(context, map_addr + map_col)?;
+                tile = PPU::fetch_tile_line(context, tile_index, pixel_row, false);
+            }
+            let curr_tile_pixel = 7 - (tilemap_pixel_index & 7);
+            let pixel_color = (alu::read_bits(tile.0, curr_tile_pixel as u8, 1) << 1)
+                + alu::read_bits(tile.1, curr_tile_pixel as u8, 1);
+            let rgb = PPU::color_from(pixel_color, context.memory.io[BGP]);
+            let framebuffer_index = (ly * 160 + offset) * 3;
+            context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
+        }
         let sprite_table = PPU::fetch_from_oam(context)?;
         for sprite in sprite_table.into_iter().flatten() {
             let tile_height = if alu::read_bits(context.memory.io[LCDC], 2, 1) == 1 {
