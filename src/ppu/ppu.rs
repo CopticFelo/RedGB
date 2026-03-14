@@ -1,7 +1,7 @@
 extern crate sdl3;
 
 use itertools::Either;
-use log::{debug, info, trace};
+use log::trace;
 
 use crate::cpu::alu;
 use crate::cpu::cpu_context::CpuContext;
@@ -107,7 +107,7 @@ impl PPU {
         );
         tile_line
     }
-    pub fn color_from(pixel_color: u8, palette: u8, context: &mut CpuContext) -> [u8; 3] {
+    pub fn color_from(pixel_color: u8, palette: u8) -> [u8; 3] {
         let ids = [
             alu::read_bits(palette, 0, 2),
             alu::read_bits(palette, 2, 2),
@@ -130,7 +130,7 @@ impl PPU {
         }
         let scx = context.memory.io[SCX] as usize;
         let scy = context.memory.io[SCY] as usize;
-        let map_col = (scx >> 3);
+        let map_col = scx >> 3;
         let map_row = ((ly + scy) >> 3) & 31;
         let map_addr = if alu::read_bits(lcdc, 3, 1) == 1 {
             0x9C00_usize
@@ -142,7 +142,7 @@ impl PPU {
         // Loop over 20 tiles in tile map (each scanline is 20 tiles across at most)
         // be careful of boundries because scx offset
         let mut pixels_drawn = 0;
-        for index in 0..20 {
+        for _ in 0..20 {
             // get tile index for tile map using (map_addr + i)
             let tile_index = MemoryMap::dma_read(context, map_addr + i)?;
             // fetch the 2 bytes that form a line in a tile
@@ -161,7 +161,7 @@ impl PPU {
             for j in (pixel_end..pixel_start).rev() {
                 let pixel_color =
                     (alu::read_bits(tile.0, j as u8, 1) << 1) + alu::read_bits(tile.1, j as u8, 1);
-                let rgb = PPU::color_from(pixel_color, context.memory.io[BGP], context);
+                let rgb = PPU::color_from(pixel_color, context.memory.io[BGP]);
                 let framebuffer_index = (ly * 160 + (7 - j) + pixels_drawn) * 3;
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
                     .copy_from_slice(&rgb);
@@ -203,7 +203,7 @@ impl PPU {
                 if pixel_color == 0 {
                     continue;
                 }
-                let rgb = PPU::color_from(pixel_color, palette, context);
+                let rgb = PPU::color_from(pixel_color, palette);
                 let framebuffer_index = (ly * 160 + first_visible + offest) * 3;
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
                     .copy_from_slice(&rgb);

@@ -1,14 +1,10 @@
 use std::time::{Duration, Instant};
 
 use log::{debug, info};
-use sdl3::EventPump;
 use sdl3::event::Event;
-use sdl3::gpu::Buffer;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::PixelFormat;
-use sdl3::render::{TextureCreator, WindowCanvas};
 use sdl3::sys::render::SDL_RendererLogicalPresentation;
-use sdl3::video::WindowContext;
 
 use crate::cpu::cpu_context::CpuContext;
 use crate::cpu::reg_file::{Modes, RegFile};

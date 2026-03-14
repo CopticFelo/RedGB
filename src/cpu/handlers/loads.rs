@@ -1,10 +1,9 @@
-use log::debug;
 
 use crate::{
     cpu::{
         alu,
         cpu_context::CpuContext,
-        operands::{R8, R16, R16Type},
+        operands::R8,
     },
     error::GBError,
 };

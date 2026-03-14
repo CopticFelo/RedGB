@@ -1,4 +1,3 @@
-use log::error;
 
 use crate::{
     cpu::{alu::*, cpu_context::CpuContext, operands::R8, reg_file::Flag},

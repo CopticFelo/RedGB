@@ -1,15 +1,6 @@
-use std::{
-    thread::sleep,
-    time::{Duration, Instant},
-};
+use std::time::Instant;
 
-use log::{debug, error, info, trace};
-use sdl3::{
-    EventPump,
-    keyboard::Keycode,
-    render::{TextureCreator, WindowCanvas},
-    video::WindowContext,
-};
+use log::{debug, error};
 
 use crate::{
     cpu::{
@@ -253,7 +244,7 @@ impl CpuContext {
         result: Result<String, GBError>,
         opcode: u8,
         opcode_addr: u16,
-        registers: &RegFile,
+        _registers: &RegFile,
     ) -> Result<(), GBError> {
         match result {
             Ok(s) => {

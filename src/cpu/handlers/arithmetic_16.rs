@@ -1,7 +1,7 @@
 use crate::{
     cpu::{
         alu,
-        cpu_context::{self, CpuContext},
+        cpu_context::CpuContext,
         operands::{R16, R16Type},
         reg_file::Flag,
     },

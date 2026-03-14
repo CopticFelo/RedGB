@@ -1,8 +1,6 @@
 use crate::rom::rom_info::{CGBMode, ROMInfo};
-use std::fs;
 use std::ops::Range;
 use std::ops::RangeInclusive;
-use std::str;
 
 // https://gbdev.io/pandocs/The_Cartridge_Header.html#0104-0133--nintendo-logo
 const NINTENDO: [u8; 48] = [

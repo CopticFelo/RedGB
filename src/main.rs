@@ -1,7 +1,6 @@
 use redgb::emulator;
 use redgb::rom::{rom_info, rom_parser};
-use std::io::Write;
-use std::{env, fs, io};
+use std::{env, fs};
 
 fn main() {
     env_logger::init();
