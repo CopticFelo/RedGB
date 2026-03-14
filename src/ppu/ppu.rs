@@ -45,8 +45,8 @@ impl PPU {
         }
         let lyc_interrupt = alu::read_bits(context.memory.io[STAT], 6, 1) == 1;
         if context.memory.io[LY] == context.memory.io[LYC] && lyc_interrupt {
-            alu::set_bit(context.memory.io[IF], 1, true);
-            alu::set_bit(context.memory.io[STAT], 2, true);
+            context.memory.io[IF] = alu::set_bit(context.memory.io[IF], 1, true);
+            context.memory.io[STAT] = alu::set_bit(context.memory.io[STAT], 2, true);
         } else if context.memory.io[LY] > 153 {
             context.memory.io[LY] = 0;
         } else if context.memory.io[LY] == 144 {
@@ -129,6 +129,7 @@ impl PPU {
             context.frame_drawn = true;
         }
         let scx = context.memory.io[SCX] as usize;
+        log::info!("SCX: {}", scx);
         let scy = context.memory.io[SCY] as usize;
         let map_col = scx >> 3;
         let map_row = ((ly + scy) >> 3) & 31;
