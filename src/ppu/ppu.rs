@@ -133,7 +133,6 @@ impl PPU {
             context.frame_drawn = true;
         }
         let scx = context.memory.io[SCX] as usize;
-        log::info!("SCX: {}", scx);
         let scy = context.memory.io[SCY] as usize;
         let mut map_col = scx >> 3;
         let map_row = ((ly + scy) >> 3) & 31;
@@ -143,9 +142,6 @@ impl PPU {
             0x9800_usize
         } + map_row * 32;
         let pixel_row = ((ly + scy) & 7) as u8;
-        if scx > 0 {
-            print!("");
-        }
         let mut tile_index = MemoryMap::dma_read(context, map_addr + map_col)?;
         let mut tile = PPU::fetch_tile_line(context, tile_index, pixel_row, false);
         for (offset, virtual_index) in (scx..(scx + 160)).enumerate() {
