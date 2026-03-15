@@ -126,12 +126,9 @@ impl PPU {
             _ => unreachable!(),
         }
     }
-    pub fn draw_scanline(context: &mut CpuContext) -> Result<(), GBError> {
+    pub fn draw_background(context: &mut CpuContext) -> Result<(), GBError> {
         let lcdc = context.memory.io[LCDC];
         let ly: usize = context.memory.io[LY] as usize;
-        if ly == 143 {
-            context.frame_drawn = true;
-        }
         let scx = context.memory.io[SCX] as usize;
         let scy = context.memory.io[SCY] as usize;
         let mut map_col = scx >> 3;
@@ -159,6 +156,10 @@ impl PPU {
             let framebuffer_index = (ly * 160 + offset) * 3;
             context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
         }
+        Ok(())
+    }
+    pub fn draw_sprites(context: &mut CpuContext) -> Result<(), GBError> {
+        let ly: usize = context.memory.io[LY] as usize;
         let sprite_table = PPU::fetch_from_oam(context)?;
         for sprite in sprite_table.into_iter().flatten() {
             let tile_height = if alu::read_bits(context.memory.io[LCDC], 2, 1) == 1 {
@@ -198,6 +199,15 @@ impl PPU {
                     .copy_from_slice(&rgb);
             }
         }
+        Ok(())
+    }
+    pub fn draw_scanline(context: &mut CpuContext) -> Result<(), GBError> {
+        let ly: usize = context.memory.io[LY] as usize;
+        if ly == 143 {
+            context.frame_drawn = true;
+        }
+        PPU::draw_background(context)?;
+        PPU::draw_sprites(context)?;
         Ok(())
     }
 }
