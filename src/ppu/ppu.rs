@@ -19,6 +19,8 @@ const OBP0: usize = 0x48;
 const OBP1: usize = 0x49;
 const SCY: usize = 0x42;
 const SCX: usize = 0x43;
+const WY: usize = 0x4A;
+const WX: usize = 0x4B;
 
 pub struct PPU {
     last_cycle: u64,
@@ -201,12 +203,53 @@ impl PPU {
         }
         Ok(())
     }
+    pub fn draw_window(context: &mut CpuContext) -> Result<(), GBError> {
+        let lcdc = context.memory.io[LCDC];
+        let ly: usize = context.memory.io[LY] as usize;
+        let wy = context.memory.io[WY] as usize;
+        let wx = context.memory.io[WX] as isize - 7;
+        let pixel_row = (ly & 7) as u8;
+        let window_y = ly - wy;
+        let mut map_col = 0;
+        let window_map_addr = if alu::read_bits(lcdc, 6, 1) == 0 {
+            0x9800
+        } else {
+            0x9C00
+        } + 32 * (window_y >> 3);
+        let mut tile_index = MemoryMap::dma_read(context, window_map_addr)?;
+        let mut tile = PPU::fetch_tile_line(context, tile_index, pixel_row, false);
+        for (offset, pixel_index) in (wx..wx + 160).enumerate() {
+            if pixel_index > 159 {
+                break;
+            } else if pixel_index < 0 {
+                continue;
+            }
+            let new_map_col = offset >> 3;
+            if new_map_col != map_col {
+                map_col = new_map_col;
+                tile_index = MemoryMap::dma_read(context, window_map_addr + map_col)?;
+                tile = PPU::fetch_tile_line(context, tile_index, pixel_row, false);
+            }
+            let curr_tile_pixel = 7 - (offset & 7);
+            let pixel_color = (alu::read_bits(tile.0, curr_tile_pixel as u8, 1) << 1)
+                + alu::read_bits(tile.1, curr_tile_pixel as u8, 1);
+            let rgb = PPU::color_from(pixel_color, context.memory.io[BGP]);
+            let framebuffer_index = (ly * 160 + pixel_index as usize) * 3;
+            context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
+        }
+        Ok(())
+    }
     pub fn draw_scanline(context: &mut CpuContext) -> Result<(), GBError> {
+        let lcdc = context.memory.io[LCDC];
+        let wy = context.memory.io[WY] as usize;
         let ly: usize = context.memory.io[LY] as usize;
         if ly == 143 {
             context.frame_drawn = true;
         }
         PPU::draw_background(context)?;
+        if wy <= ly && alu::read_bits(lcdc, 5, 1) == 1 {
+            PPU::draw_window(context)?;
+        }
         PPU::draw_sprites(context)?;
         Ok(())
     }
