@@ -218,7 +218,7 @@ impl PPU {
         } + 32 * (window_y >> 3);
         let mut tile_index = MemoryMap::dma_read(context, window_map_addr)?;
         let mut tile = PPU::fetch_tile_line(context, tile_index, pixel_row, false);
-        for (offset, pixel_index) in (wx..wx + 160).enumerate() {
+        for (offset, pixel_index) in (wx..wx + 167).enumerate() {
             if pixel_index > 159 {
                 break;
             } else if pixel_index < 0 {
