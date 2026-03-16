@@ -1,6 +1,5 @@
 extern crate sdl3;
 
-use itertools::Either;
 use log::trace;
 
 use crate::cpu::alu;
