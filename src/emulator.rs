@@ -4,6 +4,7 @@ use log::{debug, info};
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::PixelFormat;
+use sdl3::render::ScaleMode;
 use sdl3::sys::render::SDL_RendererLogicalPresentation;
 
 use crate::cpu::cpu_context::CpuContext;
@@ -31,6 +32,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     let mut texture = texture_creator
         .create_texture_streaming(PixelFormat::RGB24, 160, 144)
         .expect("Error: Could not create streaming texture");
+    texture.set_scale_mode(ScaleMode::Nearest);
     let mut event_pump = sdl_context
         .event_pump()
         .expect("Error: Could not capture game input");
