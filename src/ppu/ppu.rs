@@ -174,29 +174,19 @@ impl PPU {
                 tile_row = tile_height - tile_row;
             }
             let tile_line = PPU::fetch_tile_line(context, sprite.tile_index, tile_row, true);
-            let (pixel_start, first_visible) = if sprite.x < 0 {
-                ((8 + sprite.x) as u8, 0)
-            } else {
-                (8, sprite.x as usize)
-            };
-            let pixel_end = (sprite.x as u8).saturating_sub(160);
-            let draw_range = if sprite.x_flip {
-                Either::Left(pixel_end..pixel_start)
-            } else {
-                Either::Right((pixel_end..pixel_start).rev())
-            };
             let palette = context.memory.io[if sprite.dmg_palette == 0 { OBP0 } else { OBP1 }];
-            for (offest, bit) in draw_range.enumerate() {
-                if bit > 7 {
+            for (offset, x_pos) in (sprite.x..sprite.x + 8).enumerate() {
+                if !(0..160).contains(&x_pos) {
                     continue;
                 }
-                let pixel_color = (alu::read_bits(tile_line.0, bit, 1) << 1)
-                    + alu::read_bits(tile_line.1, bit, 1);
+                let bit = if sprite.x_flip { offset } else { 7 - offset };
+                let pixel_color = (alu::read_bits(tile_line.0, bit as u8, 1) << 1)
+                    + alu::read_bits(tile_line.1, bit as u8, 1);
                 if pixel_color == 0 {
                     continue;
                 }
                 let rgb = PPU::color_from(pixel_color, palette);
-                let framebuffer_index = (ly * 160 + first_visible + offest) * 3;
+                let framebuffer_index = (ly * 160 + x_pos as usize) * 3;
                 context.ppu.framebuffer[framebuffer_index..framebuffer_index + 3]
                     .copy_from_slice(&rgb);
             }
