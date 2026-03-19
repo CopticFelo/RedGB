@@ -45,6 +45,7 @@ impl CpuContext {
             frame_drawn: false,
             joypad: Joypad::default(),
             apu: APU {
+                accumulator: 0.0,
                 last_cycle: 0,
                 frame_sequencer: 0,
                 buffer: VecDeque::new(),

@@ -10,6 +10,7 @@ const NR21: usize = 0x16;
 const NR22: usize = 0x17;
 const NR23: usize = 0x18;
 const NR24: usize = 0x19;
+const T_CYCLES_PER_SAMPLE: f32 = 4194304.0 / 44100.0;
 
 use crate::{
     apu::channel::{AudioChannel, PulseChannel},
@@ -18,6 +19,7 @@ use crate::{
 
 pub struct APU {
     pub last_cycle: u64,
+    pub accumulator: f32,
     pub frame_sequencer: u8,
     pub buffer: VecDeque<f32>,
     pub pulse_1: PulseChannel,
@@ -58,7 +60,8 @@ impl APU {
             .read_period(context.memory.io[NR23], context.memory.io[NR24]);
     }
     pub fn tick(context: &mut CpuContext) {
-        context.apu.last_cycle += 1;
+        context.apu.last_cycle += 4;
+        context.apu.accumulator += 4.0;
         if context.apu.last_cycle == 8192 {
             context.apu.frame_sequencer = (context.apu.frame_sequencer + 1) & 7;
             context.apu.last_cycle = 0;
@@ -104,8 +107,8 @@ impl APU {
             .read_period(context.memory.io[NR23], context.memory.io[NR24]);
         let ch1 = context.apu.pulse_1.tick(context.apu.frame_sequencer);
         let ch2 = context.apu.pulse_2.tick(context.apu.frame_sequencer);
-        if context.apu.last_cycle.is_multiple_of(87) {
-            log::info!("Audio: {}", (ch1 + ch2) / 2.0);
+        while context.apu.accumulator >= T_CYCLES_PER_SAMPLE {
+            context.apu.accumulator -= T_CYCLES_PER_SAMPLE;
             context.apu.buffer.push_back((ch1 + ch2) / 2.0);
         }
     }

@@ -23,7 +23,7 @@ const GB_AUDIO_SPEC: AudioSpec = AudioSpec {
     format: Some(AudioFormat::f32_sys()),
 };
 const AUDIO_SPEC: AudioSpec = AudioSpec {
-    freq: Some(48000),
+    freq: Some(44100),
     channels: Some(1),
     format: Some(AudioFormat::f32_sys()),
 };
@@ -69,14 +69,14 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     APU::init(&mut context);
     loop {
         context.step()?;
-        let mut sample_count = stream.available_bytes().unwrap() / 4;
-        if sample_count < 32768 {
+        let sample_count = stream.available_bytes().unwrap() / 4;
+        if sample_count < 8192 {
             if context.apu.buffer.is_empty() {
                 log::error!("Ran out of samples");
             } else if sample_count == 0 {
                 log::error!("SDL OUT OF SAMPLES");
             }
-            context.apu.callback(&mut stream, 32768 - sample_count);
+            context.apu.callback(&mut stream, 8192 - sample_count);
         }
         if time.elapsed() < target {
             std::thread::sleep(target.abs_diff(time.elapsed()));
