@@ -1,8 +1,9 @@
-use std::time::Instant;
+use std::{collections::VecDeque, time::Instant};
 
 use log::{debug, error};
 
 use crate::{
+    apu::{apu::APU, channel::PulseChannel},
     cpu::{
         alu,
         handlers::*,
@@ -28,6 +29,7 @@ pub struct CpuContext {
     pub frame_drawn: bool,
     timer: Option<Instant>,
     pub joypad: Joypad,
+    pub apu: APU,
 }
 
 impl CpuContext {
@@ -42,6 +44,13 @@ impl CpuContext {
             serial_message: vec![],
             frame_drawn: false,
             joypad: Joypad::default(),
+            apu: APU {
+                last_cycle: 0,
+                frame_sequencer: 0,
+                buffer: VecDeque::new(),
+                pulse_1: PulseChannel::default(),
+                pulse_2: PulseChannel::default(),
+            },
         }
     }
 
@@ -50,6 +59,7 @@ impl CpuContext {
         // trace!("cycles {}", self.t_cycles);
         PPU::tick(self);
         GBTimer::tick(self);
+        APU::tick(self);
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             self.memory.io[SB] <<= 1;

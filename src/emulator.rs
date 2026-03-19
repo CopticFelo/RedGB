@@ -1,18 +1,32 @@
 use std::time::{Duration, Instant};
 
 use log::{debug, info};
+use sdl3::audio::{AudioFormat, AudioSpec, AudioStream};
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::PixelFormat;
 use sdl3::render::ScaleMode;
+use sdl3::sys::audio::{SDL_AudioStream, SDL_CreateAudioStream};
 use sdl3::sys::render::SDL_RendererLogicalPresentation;
 
+use crate::apu::apu::APU;
 use crate::cpu::cpu_context::CpuContext;
 use crate::cpu::reg_file::{Modes, RegFile};
 use crate::error::GBError;
 use crate::mem::map;
 use crate::ppu::ppu::PPU;
 use crate::rom::rom_info::ROMInfo;
+
+const GB_AUDIO_SPEC: AudioSpec = AudioSpec {
+    freq: Some(1048576),
+    channels: Some(1),
+    format: Some(AudioFormat::f32_sys()),
+};
+const AUDIO_SPEC: AudioSpec = AudioSpec {
+    freq: Some(48000),
+    channels: Some(1),
+    format: Some(AudioFormat::f32_sys()),
+};
 
 pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError> {
     // Init SDL
@@ -43,8 +57,27 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     context.memory.io[0x0] = 255;
     let mut time = Instant::now();
     let target = Duration::new(0, 16666667);
+    let audio_sys = sdl_context.audio().expect("Error: Could not init audio");
+    let device = audio_sys
+        .open_playback_device(&AUDIO_SPEC)
+        .expect("Error: Could not open an audio device");
+    let mut stream = audio_sys
+        .new_stream(Some(&AUDIO_SPEC), Some(&AUDIO_SPEC))
+        .expect("Error: Could not create audio stream");
+    device.bind_stream(&stream).unwrap();
+    stream.resume().unwrap();
+    APU::init(&mut context);
     loop {
         context.step()?;
+        let mut sample_count = stream.available_bytes().unwrap() / 4;
+        if sample_count < 32768 {
+            if context.apu.buffer.is_empty() {
+                log::error!("Ran out of samples");
+            } else if sample_count == 0 {
+                log::error!("SDL OUT OF SAMPLES");
+            }
+            context.apu.callback(&mut stream, 32768 - sample_count);
+        }
         if time.elapsed() < target {
             std::thread::sleep(target.abs_diff(time.elapsed()));
         }
@@ -60,6 +93,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
                 } => {
                     info!("Cycle count: {}", &context.t_cycles);
                     info!("CPU {:#?}", &context.registers);
+                    info!("Audio: {:#?}", &context.memory.io[0x10..=0x26]);
                     info!("Last Serial message: {}", {
                         str::from_utf8(&context.serial_message[..]).unwrap()
                     });
