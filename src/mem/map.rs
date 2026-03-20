@@ -1,4 +1,5 @@
 use crate::{
+    apu::channel::AudioChannel,
     cpu::{alu, cpu_context::CpuContext, input::Joypad},
     error::GBError,
     rom::rom_info::ROMInfo,
@@ -113,6 +114,28 @@ impl MemoryMap {
                         let byte = context.memory.io.get_mut(addr - 0xFF00);
                         *byte.unwrap() = 0;
                         return Ok(());
+                    }
+                    0xFF11 => context.apu.pulse_1.length_timer = 64 - alu::read_bits(value, 0, 6),
+                    0xFF16 => context.apu.pulse_2.length_timer = 64 - alu::read_bits(value, 0, 6),
+                    0xFF14 => {
+                        if alu::read_bits(value, 7, 1) == 1 {
+                            context.apu.pulse_1.reset(
+                                context.memory.io[0x12],
+                                context.memory.io[0x13],
+                                // context.memory.io[0x14],
+                                value,
+                            );
+                        }
+                    }
+                    0xFF19 => {
+                        if alu::read_bits(value, 7, 1) == 1 {
+                            context.apu.pulse_2.reset(
+                                context.memory.io[0x17],
+                                context.memory.io[0x18],
+                                // context.memory.io[0x19],
+                                value,
+                            );
+                        }
                     }
                     0xFF46 => {
                         MemoryMap::oam_transfer(context, value);

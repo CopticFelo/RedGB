@@ -61,6 +61,17 @@ impl APU {
         if context.apu.last_cycle == 8192 {
             context.apu.frame_sequencer = (context.apu.frame_sequencer + 1) & 7;
             context.apu.last_cycle = 0;
+            if context.apu.frame_sequencer & 1 == 0 {
+                context.apu.pulse_1.length_tick();
+                context.apu.pulse_2.length_tick();
+            }
+            if context.apu.frame_sequencer == 7 {
+                context.apu.pulse_1.vol_sweep();
+                context.apu.pulse_2.vol_sweep();
+            } else if context.apu.frame_sequencer == 2 || context.apu.frame_sequencer == 6 {
+                // TODO: This function is still broken, fix it
+                context.apu.pulse_1.period_sweep();
+            }
         }
         // Channel 1
         context.apu.pulse_1.duty_cycle = match alu::read_bits(context.memory.io[0x11], 6, 2) {
@@ -70,18 +81,7 @@ impl APU {
             0b11 => 3,
             _ => unreachable!(),
         };
-        context.apu.pulse_1.is_on = alu::read_bits(context.memory.io[NR14], 7, 1) == 1;
-        context.apu.pulse_1.length_timer = alu::read_bits(context.memory.io[NR11], 0, 6);
         context.apu.pulse_1.length_enable = alu::read_bits(context.memory.io[NR14], 6, 1) == 1;
-        context.apu.pulse_1.period_step = alu::read_bits(context.memory.io[NR10], 0, 3);
-        context.apu.pulse_1.period_inc = alu::read_bits(context.memory.io[NR10], 3, 1) == 1;
-        context.apu.pulse_1.period_pace = alu::read_bits(context.memory.io[NR10], 4, 3);
-        context.apu.pulse_1.vol_inc = alu::read_bits(context.memory.io[NR12], 3, 1) == 0;
-        context.apu.pulse_1.vol_pace = alu::read_bits(context.memory.io[NR12], 0, 3);
-        context
-            .apu
-            .pulse_1
-            .read_period(context.memory.io[NR13], context.memory.io[NR14]);
         // Channel 2
         context.apu.pulse_2.duty_cycle = match alu::read_bits(context.memory.io[0x16], 6, 2) {
             0b00 => 0,
@@ -90,17 +90,9 @@ impl APU {
             0b11 => 3,
             _ => unreachable!(),
         };
-        context.apu.pulse_2.is_on = alu::read_bits(context.memory.io[NR24], 7, 1) == 1;
-        context.apu.pulse_1.length_timer = alu::read_bits(context.memory.io[NR21], 0, 6);
-        context.apu.pulse_1.length_enable = alu::read_bits(context.memory.io[NR24], 6, 1) == 1;
-        context.apu.pulse_2.vol_inc = alu::read_bits(context.memory.io[NR22], 3, 1) == 0;
-        context.apu.pulse_2.vol_pace = alu::read_bits(context.memory.io[NR22], 0, 3);
-        context
-            .apu
-            .pulse_2
-            .read_period(context.memory.io[NR23], context.memory.io[NR24]);
-        let ch1 = context.apu.pulse_1.tick(context.apu.frame_sequencer);
-        let ch2 = context.apu.pulse_2.tick(context.apu.frame_sequencer);
+        context.apu.pulse_2.length_enable = alu::read_bits(context.memory.io[NR24], 6, 1) == 1;
+        let ch1 = context.apu.pulse_1.tick();
+        let ch2 = context.apu.pulse_2.tick();
         while context.apu.accumulator >= T_CYCLES_PER_SAMPLE {
             context.apu.accumulator -= T_CYCLES_PER_SAMPLE;
             context.apu.buffer.push_back((ch1 + ch2) / 2.0);
