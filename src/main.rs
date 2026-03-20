@@ -1,25 +1,32 @@
 use redgb::emulator;
 use redgb::rom::{rom_info, rom_parser};
+use rfd::FileDialog;
+use std::path::PathBuf;
 use std::{env, fs, io, io::Write};
 
 fn main() {
     env_logger::init();
     let args: Vec<String> = env::args().collect();
     let mut rom_path: String = String::new();
+
     if args.len() < 2 {
         #[cfg(not(debug_assertions))]
         {
-            print!("Input ROM:");
-            io::stdout().flush().unwrap();
-            io::stdin()
-                .read_line(&mut rom_path)
-                .expect("Input error occoured");
-            rom_path = rom_path.trim().to_string();
+            print!("Select ROM File:");
+            let rom_path_opt = FileDialog::new()
+                .add_filter("Gameboy ROM", &["gb"])
+                .set_directory(".")
+                .pick_file();
+            match rom_path_opt {
+                Some(path) => {
+                    rom_path = path.to_str().unwrap().to_string();
+                }
+                None => return,
+            }
         }
         #[cfg(debug_assertions)]
         {
-            rom_path =
-                "/home/felo/dev/rust/RedGB/test_roms/Super Mario Land (World).gb".to_string();
+            rom_path = "/home/felo/dev/rust/RedGB/test_roms/tetris.gb".to_string();
         }
     } else {
         rom_path = args[1].clone();
