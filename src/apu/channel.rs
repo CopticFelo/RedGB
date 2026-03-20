@@ -34,10 +34,9 @@ pub struct PulseChannel {
 impl AudioChannel for PulseChannel {
     fn tick(&mut self, frame_sequencer: u8) -> f32 {
         if frame_sequencer & 1 == 0 && self.length_enable {
+            self.length_timer -= 1;
             if self.length_timer == 0 {
                 self.is_on = false;
-            } else {
-                self.length_timer -= 0;
             }
         }
         if frame_sequencer == 2 || frame_sequencer == 6 {
@@ -45,10 +44,11 @@ impl AudioChannel for PulseChannel {
             // if self.period_sweep == self.period_pace {
             //     self.period_sweep();
             // }
-            // self.vol_sweep = (self.vol_sweep + 1) & 7;
-            // if self.vol_sweep == self.vol_pace {
-            //     self.vol_sweep();
-            // }
+        } else if frame_sequencer == 7 {
+            self.vol_sweep = (self.vol_sweep + 1) & 7;
+            if self.vol_sweep == self.vol_pace && self.vol_pace != 0 {
+                self.vol_sweep();
+            }
         }
         if self.is_on {
             let sample = if DUTY_TABLE[self.duty_cycle][self.phase as usize] == 0 {
@@ -89,10 +89,10 @@ impl PulseChannel {
         // log::info!("period: {}", self.period);
     }
     fn vol_sweep(&mut self) {
-        if self.vol_inc {
-            self.volume = (self.volume + 1) & 15;
-        } else {
-            self.volume = self.volume.saturating_sub(1);
+        if self.vol_inc && self.volume != 15 {
+            self.volume += 1;
+        } else if !self.vol_inc && self.volume != 0 {
+            self.volume -= 1;
         }
         // log::info!("vol: {}", self.volume);
     }

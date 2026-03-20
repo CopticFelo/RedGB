@@ -75,7 +75,6 @@ impl APU {
             _ => unreachable!(),
         };
         context.apu.pulse_1.is_on = alu::read_bits(context.memory.io[NR14], 7, 1) == 1;
-        context.apu.pulse_1.volume = alu::read_bits(context.memory.io[NR12], 4, 4);
         context.apu.pulse_1.length_timer = alu::read_bits(context.memory.io[NR11], 0, 6);
         context.apu.pulse_1.length_enable = alu::read_bits(context.memory.io[NR14], 6, 1) == 1;
         context.apu.pulse_1.period_step = alu::read_bits(context.memory.io[NR10], 0, 3);
@@ -96,7 +95,6 @@ impl APU {
             _ => unreachable!(),
         };
         context.apu.pulse_2.is_on = alu::read_bits(context.memory.io[NR24], 7, 1) == 1;
-        context.apu.pulse_2.volume = alu::read_bits(context.memory.io[NR22], 4, 4);
         context.apu.pulse_1.length_timer = alu::read_bits(context.memory.io[NR21], 0, 6);
         context.apu.pulse_1.length_enable = alu::read_bits(context.memory.io[NR24], 6, 1) == 1;
         context.apu.pulse_2.vol_inc = alu::read_bits(context.memory.io[NR22], 3, 1) == 0;
