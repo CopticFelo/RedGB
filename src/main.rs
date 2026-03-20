@@ -18,7 +18,8 @@ fn main() {
         }
         #[cfg(debug_assertions)]
         {
-            rom_path = "/home/felo/dev/rust/RedGB/test_roms/Dr. Mario (World).gb".to_string();
+            rom_path =
+                "/home/felo/dev/rust/RedGB/test_roms/Super Mario Land (World).gb".to_string();
         }
     } else {
         rom_path = args[1].clone();

@@ -13,7 +13,7 @@ pub trait AudioChannel {
 
 #[derive(Default)]
 pub struct PulseChannel {
-    delta: u32,
+    phase: u32,
     div: u32,
     vol_sweep: u8,
     period_sweep: u8,
@@ -51,10 +51,8 @@ impl AudioChannel for PulseChannel {
             // }
         }
         if self.is_on {
-            let phase = self.delta & 7;
-            let sample = if DUTY_TABLE[self.duty_cycle][phase as usize] == 0 {
-                -(self.volume as f32) / 15.0
-                // 0.0
+            let sample = if DUTY_TABLE[self.duty_cycle][self.phase as usize] == 0 {
+                0.0
             } else {
                 self.volume as f32 / 15.0
             };
@@ -62,7 +60,7 @@ impl AudioChannel for PulseChannel {
                 self.div -= 1;
             } else if self.div == 0 {
                 self.div = 2048 - self.period;
-                self.delta += 1;
+                self.phase = (self.phase + 1) & 7;
             }
             sample
         } else {
