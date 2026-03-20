@@ -34,11 +34,8 @@ pub struct PulseChannel {
 impl AudioChannel for PulseChannel {
     fn tick(&mut self) -> f32 {
         if self.is_on {
-            let sample = if DUTY_TABLE[self.duty_cycle][self.phase as usize] == 0 {
-                -(self.volume as f32) / 15.0
-            } else {
-                self.volume as f32 / 15.0
-            };
+            let sample = DUTY_TABLE[self.duty_cycle][self.phase as usize] as f32
+                * (self.volume as f32 / 15.0);
             if self.div != 0 {
                 self.div -= 1;
             } else {
