@@ -42,13 +42,9 @@ impl APU {
         // Trigger
         context.apu.pulse_1.is_on = alu::read_bits(context.memory.io[NR14], 7, 1) == 1;
         context.apu.pulse_2.is_on = alu::read_bits(context.memory.io[NR24], 7, 1) == 1;
-        // context.apu.pulse_1.is_on = true;
-        // context.apu.pulse_2.is_on = true;
         // Volume
         context.apu.pulse_1.volume = alu::read_bits(context.memory.io[NR12], 4, 4);
         context.apu.pulse_2.volume = alu::read_bits(context.memory.io[NR22], 4, 4);
-        // context.apu.pulse_1.volume = 4;
-        // context.apu.pulse_2.volume = 4;
         // Period
         context
             .apu
