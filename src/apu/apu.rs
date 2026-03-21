@@ -1,4 +1,4 @@
-use std::{any::Any, collections::VecDeque};
+use std::collections::VecDeque;
 
 const NR52: usize = 0x26;
 const NR10: usize = 0x10;

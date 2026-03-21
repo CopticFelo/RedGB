@@ -1,12 +1,11 @@
 use std::time::{Duration, Instant};
 
 use log::{debug, info};
-use sdl3::audio::{AudioFormat, AudioSpec, AudioStream};
+use sdl3::audio::{AudioFormat, AudioSpec};
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::PixelFormat;
 use sdl3::render::ScaleMode;
-use sdl3::sys::audio::{SDL_AudioStream, SDL_CreateAudioStream};
 use sdl3::sys::render::SDL_RendererLogicalPresentation;
 
 use crate::apu::apu::APU;
