@@ -32,6 +32,9 @@ Be warned that most games still don't work, any game that depends on anything be
     - [ ] MBC7
     - [ ] 3rd Party MBCs
 - [ ] Sound
+    - [x] Pulse channels (partially)
+    - [x] Wave channel
+    - [ ] Noise channel
 - [x] Input
 - [ ] CGB Support
 - [ ] GUI (Probably won't do)
