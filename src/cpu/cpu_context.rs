@@ -1,6 +1,7 @@
-use std::{collections::VecDeque, time::Instant};
+use std::{collections::VecDeque, sync::Arc, time::Instant};
 
 use log::{debug, error};
+use ringbuf::{SharedRb, storage::Heap, wrap::caching::Caching};
 
 use crate::{
     apu::{apu::APU, pulse::PulseChannel, wave::WaveChannel},
@@ -33,7 +34,12 @@ pub struct CpuContext {
 }
 
 impl CpuContext {
-    pub fn init(registers: RegFile, memory: MemoryMap, ppu: PPU) -> Self {
+    pub fn init(
+        registers: RegFile,
+        memory: MemoryMap,
+        ppu: PPU,
+        buffer: Caching<Arc<SharedRb<Heap<f32>>>, true, false>,
+    ) -> Self {
         Self {
             registers,
             memory,
@@ -48,7 +54,7 @@ impl CpuContext {
                 accumulator: 0.0,
                 last_cycle: 0,
                 frame_sequencer: 0,
-                buffer: VecDeque::new(),
+                buffer,
                 pulse_1: PulseChannel::default(),
                 pulse_2: PulseChannel::default(),
                 wave: WaveChannel::default(),

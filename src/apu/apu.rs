@@ -1,4 +1,5 @@
-use std::collections::VecDeque;
+use ringbuf::{SharedRb, storage::Heap, traits::Producer, wrap::caching::Caching};
+use std::sync::Arc;
 
 const NR52: usize = 0x26;
 const NR10: usize = 0x10;
@@ -22,24 +23,13 @@ pub struct APU {
     pub last_cycle: u64,
     pub accumulator: f32,
     pub frame_sequencer: u8,
-    pub buffer: VecDeque<f32>,
+    pub buffer: Caching<Arc<SharedRb<Heap<f32>>>, true, false>,
     pub pulse_1: PulseChannel,
     pub pulse_2: PulseChannel,
     pub wave: WaveChannel,
 }
 
 impl APU {
-    pub fn callback(&mut self, stream: &mut sdl3::audio::AudioStream, requested: i32) {
-        let mut audio_slice = Vec::<f32>::with_capacity(requested as usize);
-        for _ in 0..requested {
-            let sample_opt = self.buffer.pop_front();
-            match sample_opt {
-                Some(sample) => audio_slice.push(sample),
-                None => audio_slice.push(0.0),
-            }
-        }
-        stream.put_data_f32(&audio_slice).unwrap();
-    }
     pub fn init(context: &mut CpuContext) {
         // Trigger
         context.apu.pulse_1.is_on = alu::read_bits(context.memory.io[NR14], 7, 1) == 1;
@@ -109,7 +99,7 @@ impl APU {
         }
         while context.apu.accumulator >= T_CYCLES_PER_SAMPLE {
             context.apu.accumulator -= T_CYCLES_PER_SAMPLE;
-            context.apu.buffer.push_back((ch1 + ch2 + ch3) / 3.0);
+            context.apu.buffer.try_push((ch1 + ch2 + ch3) / 3.0);
         }
     }
 }

@@ -1,6 +1,8 @@
 use std::time::{Duration, Instant};
 
 use log::{debug, info};
+use ringbuf::HeapRb;
+use ringbuf::traits::Split;
 use sdl3::audio::{AudioFormat, AudioSpec};
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
@@ -9,6 +11,7 @@ use sdl3::render::ScaleMode;
 use sdl3::sys::render::SDL_RendererLogicalPresentation;
 
 use crate::apu::apu::APU;
+use crate::apu::buffer;
 use crate::cpu::cpu_context::CpuContext;
 use crate::cpu::reg_file::{Modes, RegFile};
 use crate::error::GBError;
@@ -52,31 +55,21 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     let registers = RegFile::new(Modes::DMG);
     let memory = map::MemoryMap::init_rom(rom, header_data);
     let ppu = PPU::new();
-    let mut context = CpuContext::init(registers, memory, ppu);
-    context.memory.io[0x0] = 255;
     let mut time = Instant::now();
     let target = Duration::new(0, 16666667);
     let audio_sys = sdl_context.audio().expect("Error: Could not init audio");
+    let audio_buf = HeapRb::<f32>::new(4096);
+    let (prod, cons) = audio_buf.split();
+    let callback_struct = buffer::AudioBuffer { buffer: cons };
     let device = audio_sys
-        .open_playback_device(&AUDIO_SPEC)
-        .expect("Error: Could not open an audio device");
-    let mut stream = audio_sys
-        .new_stream(Some(&AUDIO_SPEC), Some(&AUDIO_SPEC))
-        .expect("Error: Could not create audio stream");
-    device.bind_stream(&stream).unwrap();
-    stream.resume().unwrap();
+        .open_playback_stream(&AUDIO_SPEC, callback_struct)
+        .expect("Error: Could not open audio device");
+    let mut context = CpuContext::init(registers, memory, ppu, prod);
     APU::init(&mut context);
+    context.memory.io[0x0] = 255;
+    device.resume().expect("Error: couldn't start playback");
     loop {
         context.step()?;
-        let sample_count = stream.available_bytes().unwrap() / 4;
-        if sample_count < 8192 {
-            if context.apu.buffer.is_empty() {
-                log::error!("Ran out of samples");
-            } else if sample_count == 0 {
-                log::error!("SDL OUT OF SAMPLES");
-            }
-            context.apu.callback(&mut stream, 8192 - sample_count);
-        }
         if time.elapsed() < target {
             std::thread::sleep(target.abs_diff(time.elapsed()));
         }
@@ -90,6 +83,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
                     keycode: Some(Keycode::Escape),
                     ..
                 } => {
+                    device.pause();
                     info!("Cycle count: {}", &context.t_cycles);
                     info!("CPU {:#?}", &context.registers);
                     info!("Audio: {:#?}", &context.memory.io[0x10..=0x26]);
