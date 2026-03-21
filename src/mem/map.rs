@@ -122,7 +122,6 @@ impl MemoryMap {
                             context.apu.pulse_1.reset(
                                 context.memory.io[0x12],
                                 context.memory.io[0x13],
-                                // context.memory.io[0x14],
                                 value,
                             );
                         }
@@ -132,7 +131,17 @@ impl MemoryMap {
                             context.apu.pulse_2.reset(
                                 context.memory.io[0x17],
                                 context.memory.io[0x18],
-                                // context.memory.io[0x19],
+                                value,
+                            );
+                        }
+                    }
+                    0xFF1A => context.apu.wave.dac_enable = alu::read_bits(value, 7, 1) == 1,
+                    0xFF1B => context.apu.wave.length_timer = 256 - value as u16,
+                    0xFF1E => {
+                        if alu::read_bits(value, 7, 1) == 1 {
+                            context.apu.wave.reset(
+                                context.memory.io[0x1C],
+                                context.memory.io[0x1D],
                                 value,
                             );
                         }

@@ -10,10 +10,11 @@ const NR21: usize = 0x16;
 const NR22: usize = 0x17;
 const NR23: usize = 0x18;
 const NR24: usize = 0x19;
+const NR30: usize = 0x1A;
 const T_CYCLES_PER_SAMPLE: f32 = 4194304.0 / 44100.0;
 
 use crate::{
-    apu::channel::{AudioChannel, PulseChannel},
+    apu::{channel::AudioChannel, pulse::PulseChannel, wave::WaveChannel},
     cpu::{alu, cpu_context::CpuContext},
 };
 
@@ -24,6 +25,7 @@ pub struct APU {
     pub buffer: VecDeque<f32>,
     pub pulse_1: PulseChannel,
     pub pulse_2: PulseChannel,
+    pub wave: WaveChannel,
 }
 
 impl APU {
@@ -42,6 +44,7 @@ impl APU {
         // Trigger
         context.apu.pulse_1.is_on = alu::read_bits(context.memory.io[NR14], 7, 1) == 1;
         context.apu.pulse_2.is_on = alu::read_bits(context.memory.io[NR24], 7, 1) == 1;
+        context.apu.wave.dac_enable = alu::read_bits(context.memory.io[NR30], 7, 1) == 1;
         // Volume
         context.apu.pulse_1.volume = alu::read_bits(context.memory.io[NR12], 4, 4);
         context.apu.pulse_2.volume = alu::read_bits(context.memory.io[NR22], 4, 4);
@@ -64,6 +67,7 @@ impl APU {
             if context.apu.frame_sequencer & 1 == 0 {
                 context.apu.pulse_1.length_tick();
                 context.apu.pulse_2.length_tick();
+                context.apu.wave.length_tick();
             }
             if context.apu.frame_sequencer == 7 {
                 context.apu.pulse_1.vol_sweep();
@@ -91,11 +95,21 @@ impl APU {
             _ => unreachable!(),
         };
         context.apu.pulse_2.length_enable = alu::read_bits(context.memory.io[NR24], 6, 1) == 1;
+        // Channel 3
+        context
+            .apu
+            .wave
+            .load_wave_pattern(context.memory.io[0x30..0x40].try_into().unwrap());
         let ch1 = context.apu.pulse_1.tick();
         let ch2 = context.apu.pulse_2.tick();
+        let mut ch3 = 0.0;
+        if context.apu.wave.dac_enable == true {
+            ch3 = context.apu.wave.tick();
+            ch3 = (ch3 + context.apu.wave.tick()) / 2.0;
+        }
         while context.apu.accumulator >= T_CYCLES_PER_SAMPLE {
             context.apu.accumulator -= T_CYCLES_PER_SAMPLE;
-            context.apu.buffer.push_back((ch1 + ch2) / 2.0);
+            context.apu.buffer.push_back((ch1 + ch2 + ch3) / 3.0);
         }
     }
 }

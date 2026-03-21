@@ -3,7 +3,7 @@ use std::{collections::VecDeque, time::Instant};
 use log::{debug, error};
 
 use crate::{
-    apu::{apu::APU, channel::PulseChannel},
+    apu::{apu::APU, pulse::PulseChannel, wave::WaveChannel},
     cpu::{
         alu,
         handlers::*,
@@ -51,6 +51,7 @@ impl CpuContext {
                 buffer: VecDeque::new(),
                 pulse_1: PulseChannel::default(),
                 pulse_2: PulseChannel::default(),
+                wave: WaveChannel::default(),
             },
         }
     }
