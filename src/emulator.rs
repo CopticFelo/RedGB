@@ -58,7 +58,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     let mut time = Instant::now();
     let target = Duration::new(0, 16666667);
     let audio_sys = sdl_context.audio().expect("Error: Could not init audio");
-    let audio_buf = HeapRb::<f32>::new(4096);
+    let audio_buf = HeapRb::<f32>::new(2048);
     let (prod, cons) = audio_buf.split();
     let callback_struct = buffer::AudioBuffer { buffer: cons };
     let device = audio_sys

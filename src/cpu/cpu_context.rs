@@ -1,7 +1,7 @@
-use std::{collections::VecDeque, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 
 use log::{debug, error};
-use ringbuf::{SharedRb, storage::Heap, wrap::caching::Caching};
+use ringbuf::{SharedRb, storage::Heap, traits::Observer, wrap::caching::Caching};
 
 use crate::{
     apu::{apu::APU, pulse::PulseChannel, wave::WaveChannel},
@@ -90,7 +90,7 @@ impl CpuContext {
     pub fn step(&mut self) -> Result<(), GBError> {
         self.frame_drawn = false;
         loop {
-            if self.frame_drawn {
+            if self.frame_drawn && self.apu.buffer.occupied_len() > 1024 {
                 break Ok(());
             }
             if !self.registers.exec {
