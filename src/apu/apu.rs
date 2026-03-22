@@ -85,11 +85,6 @@ impl APU {
             _ => unreachable!(),
         };
         context.apu.pulse_2.length_enable = alu::read_bits(context.memory.io[NR24], 6, 1) == 1;
-        // Channel 3
-        context
-            .apu
-            .wave
-            .load_wave_pattern(context.memory.io[0x30..0x40].try_into().unwrap());
         let ch1 = context.apu.pulse_1.tick();
         let ch2 = context.apu.pulse_2.tick();
         let mut ch3 = 0.0;

@@ -146,6 +146,10 @@ impl MemoryMap {
                             );
                         }
                     }
+                    0xFF30..0xFF40 => context
+                        .apu
+                        .wave
+                        .load_wave_pattern(context.memory.io[0x30..0x40].try_into().unwrap()),
                     0xFF46 => {
                         MemoryMap::oam_transfer(context, value);
                     }
