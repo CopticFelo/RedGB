@@ -1,6 +1,11 @@
 use std::sync::Arc;
 
-use ringbuf::{SharedRb, storage::Heap, traits::Consumer, wrap::caching::Caching};
+use ringbuf::{
+    SharedRb,
+    storage::Heap,
+    traits::{Consumer, Observer},
+    wrap::caching::Caching,
+};
 use sdl3::audio::AudioCallback;
 
 pub struct AudioBuffer {
@@ -10,6 +15,11 @@ pub struct AudioBuffer {
 impl AudioCallback<f32> for AudioBuffer {
     fn callback(&mut self, stream: &mut sdl3::audio::AudioStream, requested: i32) {
         let mut audio_slice = Vec::<f32>::with_capacity(requested as usize);
+        log::info!(
+            "Requested {} from {}",
+            requested,
+            self.buffer.occupied_len()
+        );
         for _ in 0..requested {
             let sample_opt = self.buffer.try_pop();
             match sample_opt {
