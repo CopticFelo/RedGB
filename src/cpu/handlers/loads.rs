@@ -1,17 +1,13 @@
-
 use crate::{
-    cpu::{
-        alu,
-        cpu_context::CpuContext,
-        operands::R8,
-    },
+    bus::Bus,
+    cpu::{alu, operands::R8},
     error::GBError,
 };
 
-pub fn load_r8(context: &mut CpuContext, opcode: u8) -> Result<String, GBError> {
-    let src_param = R8::get_r8_param(alu::read_bits(opcode, 6, 1) == 0, opcode, 0, context);
-    let src = src_param.read(context)?;
-    let dst_param = R8::get_r8_param(false, opcode, 3, context);
-    dst_param.write(context, src)?;
+pub fn load_r8(bus: &mut Bus, opcode: u8) -> Result<String, GBError> {
+    let src_param = R8::get_r8_param(alu::read_bits(opcode, 6, 1) == 0, opcode, 0, bus);
+    let src = src_param.read(bus)?;
+    let dst_param = R8::get_r8_param(false, opcode, 3, bus);
+    dst_param.write(bus, src)?;
     Ok(format!("ld {} {}", dst_param.log(), src_param.log()))
 }

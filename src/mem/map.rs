@@ -1,8 +1,5 @@
 use crate::{
-    apu::channel::AudioChannel,
-    cpu::{alu, cpu_context::CpuContext, input::Joypad},
-    error::GBError,
-    rom::rom_info::ROMInfo,
+    apu::channel::AudioChannel, bus::Bus, cpu::alu, error::GBError, rom::rom_info::ROMInfo,
 };
 
 #[derive(Debug)]
@@ -43,7 +40,7 @@ impl MemoryMap {
             ie: 0,
         }
     }
-    pub fn dma_read(context: &mut CpuContext, addr: usize) -> Result<u8, GBError> {
+    pub fn dma_read(context: &mut Bus, addr: usize) -> Result<u8, GBError> {
         match addr {
             0x0000..=0x3FFF => context.memory.rom_banks[0].get(addr),
             0x4000..=0x7FFF => {
@@ -65,7 +62,7 @@ impl MemoryMap {
         .copied()
         .ok_or(GBError::BadAddress(addr as u16))
     }
-    pub fn dma_write(context: &mut CpuContext, addr: usize, value: u8) -> Result<(), GBError> {
+    pub fn dma_write(context: &mut Bus, addr: usize, value: u8) -> Result<(), GBError> {
         let opt_mem_ptr: Option<&mut u8> = match addr {
             0x0000..=0x1FFF => {
                 return Err(GBError::ReadOnlyAddress(addr as u16));
@@ -169,17 +166,17 @@ impl MemoryMap {
         }
     }
     /// +1 M-C (4 T-C)
-    pub fn read(context: &mut CpuContext, addr: u16) -> Result<u8, GBError> {
+    pub fn read(context: &mut Bus, addr: u16) -> Result<u8, GBError> {
         context.tick();
         MemoryMap::dma_read(context, addr as usize)
     }
     /// +1 M-C (4 T-C)
-    pub fn write(context: &mut CpuContext, addr: u16, value: u8) -> Result<(), GBError> {
+    pub fn write(context: &mut Bus, addr: u16, value: u8) -> Result<(), GBError> {
         context.tick();
         MemoryMap::dma_write(context, addr as usize, value)
     }
     /// +160 M-C (640 T-C)
-    pub fn oam_transfer(context: &mut CpuContext, addr: u8) {
+    pub fn oam_transfer(context: &mut Bus, addr: u8) {
         let src_addr = addr as usize * 0x100;
         let slice = match src_addr {
             0x0000..=0x3FFF => Some(&context.memory.rom_banks[0][src_addr..=src_addr + 0x9F]),

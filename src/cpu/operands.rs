@@ -1,5 +1,6 @@
 use crate::{
-    cpu::{alu, cpu_context::CpuContext, reg_file::RegFile},
+    bus::Bus,
+    cpu::{alu, reg_file::RegFile},
     error::GBError,
     mem::map::MemoryMap,
 };
@@ -18,35 +19,35 @@ pub enum R8 {
 }
 
 impl R8 {
-    pub fn get_r8_param(n8: bool, opcode: u8, index: u8, context: &mut CpuContext) -> Self {
+    pub fn get_r8_param(n8: bool, opcode: u8, index: u8, bus: &mut Bus) -> Self {
         if n8 {
-            return Self::N8(context.fetch());
+            return Self::N8(bus.fetch());
         }
         let param = alu::read_bits(opcode, index, 3);
         if param == 6 {
-            let addr = alu::read_u16(&context.registers.l, &context.registers.h);
+            let addr = alu::read_u16(&bus.registers.l, &bus.registers.h);
             Self::Hl(addr)
         } else {
             Self::Register(param)
         }
     }
 
-    pub fn read(&self, context: &mut CpuContext) -> Result<u8, GBError> {
+    pub fn read(&self, bus: &mut Bus) -> Result<u8, GBError> {
         match self {
-            Self::Register(reg) => Ok(*context.registers.match_r8(*reg)?),
-            Self::Hl(addr) => Ok(MemoryMap::read(context, *addr)?),
+            Self::Register(reg) => Ok(*bus.registers.match_r8(*reg)?),
+            Self::Hl(addr) => Ok(MemoryMap::read(bus, *addr)?),
             Self::N8(n) => Ok(*n),
         }
     }
 
-    pub fn write(&self, context: &mut CpuContext, value: u8) -> Result<(), GBError> {
+    pub fn write(&self, bus: &mut Bus, value: u8) -> Result<(), GBError> {
         match self {
             Self::Register(reg) => {
-                *context.registers.match_r8(*reg)? = value;
+                *bus.registers.match_r8(*reg)? = value;
                 Ok(())
             }
             Self::Hl(addr) => {
-                MemoryMap::write(context, *addr, value)?;
+                MemoryMap::write(bus, *addr, value)?;
                 Ok(())
             }
             Self::N8(_) => Ok(()),

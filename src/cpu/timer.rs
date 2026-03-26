@@ -1,6 +1,6 @@
 use log::trace;
 
-use crate::cpu::{alu, cpu_context::CpuContext};
+use crate::{bus::Bus, cpu::alu};
 
 const TIMA: usize = 0x05;
 const TMA: usize = 0x06;
@@ -15,7 +15,7 @@ pub struct GBTimer {
 }
 
 impl GBTimer {
-    pub fn tick(context: &mut CpuContext) {
+    pub fn tick(context: &mut Bus) {
         if context.t_cycles.abs_diff(context.gbtimer.div_last) >= 256 {
             context.memory.io[DIV] = context.memory.io[DIV].wrapping_add(1);
             context.gbtimer.div_last = context.t_cycles;
@@ -24,7 +24,7 @@ impl GBTimer {
             Self::tima_step(context);
         }
     }
-    pub fn tima_step(context: &mut CpuContext) {
+    pub fn tima_step(context: &mut Bus) {
         let inc_per_cycle = match alu::read_bits(context.memory.io[TAC], 0, 2) {
             0b00 => 1024,
             0b01 => 16,

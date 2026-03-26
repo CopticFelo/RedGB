@@ -16,7 +16,7 @@ const T_CYCLES_PER_SAMPLE: f32 = 4194304.0 / 44100.0;
 
 use crate::{
     apu::{channel::AudioChannel, pulse::PulseChannel, wave::WaveChannel},
-    cpu::{alu, cpu_context::CpuContext},
+    cpu::alu,
     mem::map::MemoryMap,
 };
 
