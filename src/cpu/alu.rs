@@ -69,6 +69,17 @@ pub fn rotate_right(mut num: u8, mut carry: bool, through_carry: bool) -> (u8, b
     }
 }
 
+/// This function modifies the LFSR AND returns bit 0
+pub fn lfsr_shift(lfsr: &mut u16, is_short: bool) -> bool {
+    let xor_res = read_bits(*lfsr as u8, 0, 1) ^ read_bits(*lfsr as u8, 1, 1);
+    if is_short {
+        *lfsr = (*lfsr & 127) | ((xor_res as u16) << 7);
+    }
+    *lfsr = (*lfsr & 32767) | ((xor_res as u16) << 15);
+    *lfsr >>= 1;
+    read_bits(*lfsr as u8, 0, 1) == 1
+}
+
 #[test]
 fn read_bits_test() {
     assert_eq!(read_bits(0x0E, 6, 1), 0);
@@ -87,4 +98,11 @@ fn rotate_test() {
     (num, carry) = rotate_right(num, carry, false);
     assert_eq!(num, 0b01000000);
     assert!(!carry);
+}
+
+#[test]
+fn lfsr_test() {
+    let mut lfsr = 98;
+    let is_short = true;
+    lfsr_shift(&mut lfsr, is_short);
 }
