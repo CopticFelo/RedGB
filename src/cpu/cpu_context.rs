@@ -4,7 +4,7 @@ use log::{debug, error};
 use ringbuf::{SharedRb, storage::Heap, traits::Observer, wrap::caching::Caching};
 
 use crate::{
-    apu::{apu::APU, pulse::PulseChannel, wave::WaveChannel},
+    apu::apu::APU,
     cpu::{
         alu,
         handlers::*,
@@ -50,15 +50,7 @@ impl CpuContext {
             serial_message: vec![],
             frame_drawn: false,
             joypad: Joypad::default(),
-            apu: APU {
-                accumulator: 0.0,
-                last_cycle: 0,
-                frame_sequencer: 0,
-                buffer,
-                pulse_1: PulseChannel::default(),
-                pulse_2: PulseChannel::default(),
-                wave: WaveChannel::default(),
-            },
+            apu: APU::new(buffer),
         }
     }
 
@@ -67,7 +59,7 @@ impl CpuContext {
         // trace!("cycles {}", self.t_cycles);
         PPU::tick(self);
         GBTimer::tick(self);
-        APU::tick(self);
+        self.apu.tick(&self.memory);
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             self.memory.io[SB] <<= 1;

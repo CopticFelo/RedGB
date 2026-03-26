@@ -10,7 +10,6 @@ use sdl3::pixels::PixelFormat;
 use sdl3::render::ScaleMode;
 use sdl3::sys::render::SDL_RendererLogicalPresentation;
 
-use crate::apu::apu::APU;
 use crate::apu::buffer;
 use crate::cpu::cpu_context::CpuContext;
 use crate::cpu::reg_file::{Modes, RegFile};
@@ -65,7 +64,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
         .open_playback_stream(&AUDIO_SPEC, callback_struct)
         .expect("Error: Could not open audio device");
     let mut context = CpuContext::init(registers, memory, ppu, prod);
-    APU::init(&mut context);
+    context.apu.tick(&context.memory);
     context.memory.io[0x0] = 255;
     device.resume().expect("Error: couldn't start playback");
     loop {
