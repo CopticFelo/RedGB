@@ -6,7 +6,7 @@ use crate::{
 pub struct Memory {
     rom_banks: Vec<Vec<u8>>,
     active_rom_bank: usize,
-    pub vram: Vec<Vec<u8>>,
+    vram: Vec<Vec<u8>>,
     active_vram: usize,
     eram: Vec<Vec<u8>>,
     active_eram: usize,

@@ -19,9 +19,8 @@ pub struct Bus {
     pub memory: Memory,
     pub t_cycles: u64,
     pub ppu: PPU,
-    pub gbtimer: GBTimer,
+    gbtimer: GBTimer,
     pub serial_message: Vec<u8>,
-    timer: Option<Instant>,
     pub joypad: Joypad,
     pub apu: APU,
 }
@@ -39,7 +38,6 @@ impl Bus {
             t_cycles: 0,
             ppu,
             gbtimer: GBTimer::default(),
-            timer: None,
             serial_message: vec![],
             joypad: Joypad::default(),
             apu: APU::new(buffer),
