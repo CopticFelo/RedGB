@@ -21,7 +21,6 @@ pub struct Bus {
     pub ppu: PPU,
     pub gbtimer: GBTimer,
     pub serial_message: Vec<u8>,
-    pub frame_drawn: bool,
     timer: Option<Instant>,
     pub joypad: Joypad,
     pub apu: APU,
@@ -42,7 +41,6 @@ impl Bus {
             gbtimer: GBTimer::default(),
             timer: None,
             serial_message: vec![],
-            frame_drawn: false,
             joypad: Joypad::default(),
             apu: APU::new(buffer),
         }
@@ -62,8 +60,7 @@ impl Bus {
 
     pub fn tick(&mut self) {
         self.t_cycles += 4_u64;
-        // trace!("cycles {}", self.t_cycles);
-        PPU::tick(self);
+        self.ppu.tick(&mut self.memory, &self.t_cycles);
         GBTimer::tick(self);
         self.apu.tick(&self.memory);
 

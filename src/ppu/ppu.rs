@@ -5,6 +5,7 @@ use log::trace;
 use crate::bus::Bus;
 use crate::cpu::alu;
 use crate::error::GBError;
+use crate::mem::map::Memory;
 use crate::ppu::sprite::GBSprite;
 
 const IF: usize = 0x0F;
@@ -23,50 +24,52 @@ const WX: usize = 0x4B;
 pub struct PPU {
     last_cycle: u64,
     pub framebuffer: Vec<u8>,
+    pub frame_flag: bool,
 }
 
 impl PPU {
     pub fn new() -> Self {
         Self {
+            frame_flag: false,
             last_cycle: 0,
             framebuffer: vec![0x0; 160 * 144 * 3],
         }
     }
 
-    pub fn tick(bus: &mut Bus) {
-        if bus.t_cycles.abs_diff(bus.ppu.last_cycle) >= 456 {
-            if bus.memory.io[LY] < 144 {
-                let _ = PPU::draw_scanline(bus);
-                let h_blank = alu::read_bits(bus.memory.io[STAT], 3, 1) == 1;
+    pub fn tick(&mut self, mem: &mut Memory, t_cycles: &u64) {
+        if t_cycles.abs_diff(self.last_cycle) >= 456 {
+            if mem.io[LY] < 144 {
+                let _ = self.draw_scanline(mem);
+                let h_blank = alu::read_bits(mem.io[STAT], 3, 1) == 1;
                 if h_blank {
-                    bus.memory.io[IF] = alu::set_bit(bus.memory.io[IF], 1, true);
+                    mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
                 }
             }
-            bus.memory.io[LY] = bus.memory.io[LY].wrapping_add(1);
-            bus.ppu.last_cycle = bus.t_cycles;
-            trace!("LY: {}", bus.memory.io[LY]);
-            trace!("Framebuffer: {:#?}", &bus.ppu.framebuffer[0..20]);
+            mem.io[LY] = mem.io[LY].wrapping_add(1);
+            self.last_cycle = *t_cycles;
+            trace!("LY: {}", mem.io[LY]);
+            trace!("Framebuffer: {:#?}", &self.framebuffer[0..20]);
         }
-        let lyc_interrupt = alu::read_bits(bus.memory.io[STAT], 6, 1) == 1;
-        if bus.memory.io[LY] == bus.memory.io[LYC] && lyc_interrupt {
-            bus.memory.io[IF] = alu::set_bit(bus.memory.io[IF], 1, true);
-            bus.memory.io[STAT] = alu::set_bit(bus.memory.io[STAT], 2, true);
-        } else if bus.memory.io[LY] > 153 {
-            bus.memory.io[LY] = 0;
-        } else if bus.memory.io[LY] == 144 {
-            bus.memory.io[0x0F] = alu::set_bit(bus.memory.io[0x0F], 0, true);
+        let lyc_interrupt = alu::read_bits(mem.io[STAT], 6, 1) == 1;
+        if mem.io[LY] == mem.io[LYC] && lyc_interrupt {
+            mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
+            mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, true);
+        } else if mem.io[LY] > 153 {
+            mem.io[LY] = 0;
+        } else if mem.io[LY] == 144 {
+            mem.io[0x0F] = alu::set_bit(mem.io[0x0F], 0, true);
         }
     }
-    pub fn fetch_from_oam(bus: &mut Bus) -> Result<[Option<GBSprite>; 10], GBError> {
+    fn fetch_from_oam(mem: &Memory) -> Result<[Option<GBSprite>; 10], GBError> {
         let mut sprite_table = [None; 10];
-        let ly = bus.memory.io[LY];
+        let ly = mem.io[LY];
         let mut index = 0;
         for obj_addr in (0xFE00..0xFEA0).step_by(4) {
-            let y = (bus.memory.dma_read(obj_addr)? as u16 as i16) - 16;
-            let x = (bus.memory.dma_read(obj_addr + 1)? as u16 as i16) - 8;
-            let tile_index = bus.memory.dma_read(obj_addr + 2)?;
-            let attributes = bus.memory.dma_read(obj_addr + 3)?;
-            let obj_size = if alu::read_bits(bus.memory.io[LCDC], 2, 1) == 1 {
+            let y = (mem.dma_read(obj_addr)? as u16 as i16) - 16;
+            let x = (mem.dma_read(obj_addr + 1)? as u16 as i16) - 8;
+            let tile_index = mem.dma_read(obj_addr + 2)?;
+            let attributes = mem.dma_read(obj_addr + 3)?;
+            let obj_size = if alu::read_bits(mem.io[LCDC], 2, 1) == 1 {
                 15
             } else {
                 7
@@ -88,8 +91,8 @@ impl PPU {
         }
         Ok(sprite_table)
     }
-    pub fn fetch_tile_line(bus: &mut Bus, tile_index: u8, tile_row: u8, is_obj: bool) -> (u8, u8) {
-        let lcdc = bus.memory.io[LCDC];
+    fn fetch_tile_line(mem: &Memory, tile_index: u8, tile_row: u8, is_obj: bool) -> (u8, u8) {
+        let lcdc = mem.io[LCDC];
         let base_ptr = if alu::read_bits(lcdc, 4, 1) == 1 || is_obj {
             0x8000
         } else {
@@ -100,13 +103,10 @@ impl PPU {
         } else {
             (base_ptr as isize + (16_isize * tile_index as i8 as isize)) as usize
         } + (2 * tile_row) as usize;
-        let tile_line: (u8, u8) = (
-            bus.memory.dma_read(addr).unwrap(),
-            bus.memory.dma_read(addr + 1).unwrap(),
-        );
+        let tile_line: (u8, u8) = (mem.dma_read(addr).unwrap(), mem.dma_read(addr + 1).unwrap());
         tile_line
     }
-    pub fn color_from(pixel_color: u8, palette: u8) -> [u8; 3] {
+    fn color_from(pixel_color: u8, palette: u8) -> [u8; 3] {
         let ids = [
             alu::read_bits(palette, 0, 2),
             alu::read_bits(palette, 2, 2),
@@ -121,11 +121,11 @@ impl PPU {
             _ => unreachable!(),
         }
     }
-    pub fn draw_background(bus: &mut Bus) -> Result<(), GBError> {
-        let lcdc = bus.memory.io[LCDC];
-        let ly: usize = bus.memory.io[LY] as usize;
-        let scx = bus.memory.io[SCX] as usize;
-        let scy = bus.memory.io[SCY] as usize;
+    fn draw_background(&mut self, mem: &Memory) -> Result<(), GBError> {
+        let lcdc = mem.io[LCDC];
+        let ly: usize = mem.io[LY] as usize;
+        let scx = mem.io[SCX] as usize;
+        let scy = mem.io[SCY] as usize;
         let mut map_col = scx >> 3;
         let map_row = ((ly + scy) >> 3) & 31;
         let map_addr = if alu::read_bits(lcdc, 3, 1) == 1 {
@@ -134,30 +134,30 @@ impl PPU {
             0x9800_usize
         } + map_row * 32;
         let pixel_row = ((ly + scy) & 7) as u8;
-        let mut tile_index = bus.memory.dma_read(map_addr + map_col)?;
-        let mut tile = PPU::fetch_tile_line(bus, tile_index, pixel_row, false);
+        let mut tile_index = mem.dma_read(map_addr + map_col)?;
+        let mut tile = PPU::fetch_tile_line(mem, tile_index, pixel_row, false);
         for (offset, virtual_index) in (scx..(scx + 160)).enumerate() {
             let tilemap_pixel_index = virtual_index & 255;
             let new_map_col = tilemap_pixel_index >> 3;
             if map_col != new_map_col {
                 map_col = new_map_col;
-                tile_index = bus.memory.dma_read(map_addr + map_col)?;
-                tile = PPU::fetch_tile_line(bus, tile_index, pixel_row, false);
+                tile_index = mem.dma_read(map_addr + map_col)?;
+                tile = PPU::fetch_tile_line(mem, tile_index, pixel_row, false);
             }
             let curr_tile_pixel = 7 - (tilemap_pixel_index & 7);
             let pixel_color = (alu::read_bits(tile.0, curr_tile_pixel as u8, 1) << 1)
                 + alu::read_bits(tile.1, curr_tile_pixel as u8, 1);
-            let rgb = PPU::color_from(pixel_color, bus.memory.io[BGP]);
+            let rgb = PPU::color_from(pixel_color, mem.io[BGP]);
             let framebuffer_index = (ly * 160 + offset) * 3;
-            bus.ppu.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
+            self.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
         }
         Ok(())
     }
-    pub fn draw_sprites(bus: &mut Bus) -> Result<(), GBError> {
-        let ly: usize = bus.memory.io[LY] as usize;
-        let sprite_table = PPU::fetch_from_oam(bus)?;
+    fn draw_sprites(&mut self, mem: &Memory) -> Result<(), GBError> {
+        let ly: usize = mem.io[LY] as usize;
+        let sprite_table = PPU::fetch_from_oam(mem)?;
         for sprite in sprite_table.into_iter().flatten() {
-            let tile_height = if alu::read_bits(bus.memory.io[LCDC], 2, 1) == 1 {
+            let tile_height = if alu::read_bits(mem.io[LCDC], 2, 1) == 1 {
                 15
             } else {
                 7
@@ -166,8 +166,8 @@ impl PPU {
             if sprite.y_flip {
                 tile_row = tile_height - tile_row;
             }
-            let tile_line = PPU::fetch_tile_line(bus, sprite.tile_index, tile_row, true);
-            let palette = bus.memory.io[if sprite.dmg_palette == 0 { OBP0 } else { OBP1 }];
+            let tile_line = PPU::fetch_tile_line(mem, sprite.tile_index, tile_row, true);
+            let palette = mem.io[if sprite.dmg_palette == 0 { OBP0 } else { OBP1 }];
             for (offset, x_pos) in (sprite.x..sprite.x + 8).enumerate() {
                 if !(0..160).contains(&x_pos) {
                     continue;
@@ -180,16 +180,16 @@ impl PPU {
                 }
                 let rgb = PPU::color_from(pixel_color, palette);
                 let framebuffer_index = (ly * 160 + x_pos as usize) * 3;
-                bus.ppu.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
+                self.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
             }
         }
         Ok(())
     }
-    pub fn draw_window(bus: &mut Bus) -> Result<(), GBError> {
-        let lcdc = bus.memory.io[LCDC];
-        let ly: usize = bus.memory.io[LY] as usize;
-        let wy = bus.memory.io[WY] as usize;
-        let wx = bus.memory.io[WX] as isize - 7;
+    fn draw_window(&mut self, mem: &Memory) -> Result<(), GBError> {
+        let lcdc = mem.io[LCDC];
+        let ly: usize = mem.io[LY] as usize;
+        let wy = mem.io[WY] as usize;
+        let wx = mem.io[WX] as isize - 7;
         let pixel_row = (ly & 7) as u8;
         let window_y = ly - wy;
         let mut map_col = 0;
@@ -198,8 +198,8 @@ impl PPU {
         } else {
             0x9C00
         } + 32 * (window_y >> 3);
-        let mut tile_index = bus.memory.dma_read(window_map_addr)?;
-        let mut tile = PPU::fetch_tile_line(bus, tile_index, pixel_row, false);
+        let mut tile_index = mem.dma_read(window_map_addr)?;
+        let mut tile = PPU::fetch_tile_line(mem, tile_index, pixel_row, false);
         for (offset, pixel_index) in (wx..wx + 167).enumerate() {
             if pixel_index > 159 {
                 break;
@@ -209,30 +209,30 @@ impl PPU {
             let new_map_col = offset >> 3;
             if new_map_col != map_col {
                 map_col = new_map_col;
-                tile_index = bus.memory.dma_read(window_map_addr + map_col)?;
-                tile = PPU::fetch_tile_line(bus, tile_index, pixel_row, false);
+                tile_index = mem.dma_read(window_map_addr + map_col)?;
+                tile = PPU::fetch_tile_line(mem, tile_index, pixel_row, false);
             }
             let curr_tile_pixel = 7 - (offset & 7);
             let pixel_color = (alu::read_bits(tile.0, curr_tile_pixel as u8, 1) << 1)
                 + alu::read_bits(tile.1, curr_tile_pixel as u8, 1);
-            let rgb = PPU::color_from(pixel_color, bus.memory.io[BGP]);
+            let rgb = PPU::color_from(pixel_color, mem.io[BGP]);
             let framebuffer_index = (ly * 160 + pixel_index as usize) * 3;
-            bus.ppu.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
+            self.framebuffer[framebuffer_index..framebuffer_index + 3].copy_from_slice(&rgb);
         }
         Ok(())
     }
-    pub fn draw_scanline(bus: &mut Bus) -> Result<(), GBError> {
-        let lcdc = bus.memory.io[LCDC];
-        let wy = bus.memory.io[WY] as usize;
-        let ly: usize = bus.memory.io[LY] as usize;
+    fn draw_scanline(&mut self, mem: &Memory) -> Result<(), GBError> {
+        let lcdc = mem.io[LCDC];
+        let wy = mem.io[WY] as usize;
+        let ly: usize = mem.io[LY] as usize;
         if ly == 143 {
-            bus.frame_drawn = true;
+            self.frame_flag = true;
         }
-        PPU::draw_background(bus)?;
+        self.draw_background(mem)?;
         if wy <= ly && alu::read_bits(lcdc, 5, 1) == 1 {
-            PPU::draw_window(bus)?;
+            self.draw_window(mem)?;
         }
-        PPU::draw_sprites(bus)?;
+        self.draw_sprites(mem)?;
         Ok(())
     }
 }

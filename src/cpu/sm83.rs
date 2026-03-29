@@ -11,9 +11,9 @@ pub struct SM83;
 
 impl SM83 {
     pub fn step(bus: &mut Bus) -> Result<(), GBError> {
-        bus.frame_drawn = false;
+        bus.ppu.frame_flag = false;
         loop {
-            if bus.frame_drawn && bus.apu.buffer.occupied_len() > 1024 {
+            if bus.ppu.frame_flag && bus.apu.buffer.occupied_len() > 1024 {
                 break Ok(());
             }
             if !bus.registers.exec {
