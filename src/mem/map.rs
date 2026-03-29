@@ -3,7 +3,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct MemoryMap {
+pub struct Memory {
     rom_banks: Vec<Vec<u8>>,
     active_rom_bank: usize,
     pub vram: Vec<Vec<u8>>,
@@ -18,7 +18,7 @@ pub struct MemoryMap {
     pub ie: u8,
 }
 
-impl MemoryMap {
+impl Memory {
     pub fn init_rom(rom: Vec<u8>, header_data: ROMInfo) -> Self {
         let mut rom_banks: Vec<Vec<u8>> = Vec::new();
         for bank in rom.chunks(0x4000) {
@@ -40,122 +40,53 @@ impl MemoryMap {
             ie: 0,
         }
     }
-    pub fn dma_read(context: &mut Bus, addr: usize) -> Result<u8, GBError> {
+    pub fn dma_read(&self, addr: usize) -> Result<u8, GBError> {
         match addr {
-            0x0000..=0x3FFF => context.memory.rom_banks[0].get(addr),
-            0x4000..=0x7FFF => {
-                context.memory.rom_banks[context.memory.active_rom_bank].get(addr - 0x4000)
-            }
-            0x8000..=0x9FFF => context.memory.vram[context.memory.active_vram].get(addr - 0x8000),
-            0xA000..=0xBFFF => context.memory.eram[context.memory.active_eram].get(addr - 0xA000),
-            0xC000..=0xCFFF => context.memory.wram[0].get(addr - 0xC000),
-            0xD000..=0xDFFF => context.memory.wram[context.memory.active_wram].get(addr - 0xD000),
-            0xE000..=0xEFFF => context.memory.wram[0].get(addr - 0xE000),
-            0xF000..=0xFDFF => context.memory.wram[context.memory.active_wram].get(addr - 0xF000),
-            0xFE00..=0xFE9F => context.memory.oam.get(addr - 0xFE00),
+            0x0000..=0x3FFF => self.rom_banks[0].get(addr),
+            0x4000..=0x7FFF => self.rom_banks[self.active_rom_bank].get(addr - 0x4000),
+            0x8000..=0x9FFF => self.vram[self.active_vram].get(addr - 0x8000),
+            0xA000..=0xBFFF => self.eram[self.active_eram].get(addr - 0xA000),
+            0xC000..=0xCFFF => self.wram[0].get(addr - 0xC000),
+            0xD000..=0xDFFF => self.wram[self.active_wram].get(addr - 0xD000),
+            0xE000..=0xEFFF => self.wram[0].get(addr - 0xE000),
+            0xF000..=0xFDFF => self.wram[self.active_wram].get(addr - 0xF000),
+            0xFE00..=0xFE9F => self.oam.get(addr - 0xFE00),
             0xFEA0..=0xFEFF => Some(&0),
-            0xFF00..=0xFF7F => context.memory.io.get(addr - 0xFF00),
-            0xFF80..=0xFFFE => context.memory.hram.get(addr - 0xFF80),
-            0xFFFF => Some(&context.memory.ie),
+            0xFF00..=0xFF7F => self.io.get(addr - 0xFF00),
+            0xFF80..=0xFFFE => self.hram.get(addr - 0xFF80),
+            0xFFFF => Some(&self.ie),
             _ => None,
         }
         .copied()
         .ok_or(GBError::BadAddress(addr as u16))
     }
-    pub fn dma_write(context: &mut Bus, addr: usize, value: u8) -> Result<(), GBError> {
+    pub fn dma_write(&mut self, addr: usize, value: u8) -> Result<(), GBError> {
         let opt_mem_ptr: Option<&mut u8> = match addr {
             0x0000..=0x1FFF => {
                 return Err(GBError::ReadOnlyAddress(addr as u16));
             }
             0x2000..=0x3FFF => {
-                context.memory.active_rom_bank = if value == 0 { 0x1 } else { value as usize };
+                self.active_rom_bank = if value == 0 { 0x1 } else { value as usize };
                 return Ok(());
             }
             0x4000..=0x7FFF => {
                 return Err(GBError::ReadOnlyAddress(addr as u16));
             }
-            0x8000..=0x9FFF => {
-                context.memory.vram[context.memory.active_vram].get_mut(addr - 0x8000)
-            }
-            0xA000..=0xBFFF => {
-                context.memory.eram[context.memory.active_eram].get_mut(addr - 0xA000)
-            }
-            0xC000..=0xCFFF => context.memory.wram[0].get_mut(addr - 0xC000),
-            0xD000..=0xDFFF => {
-                context.memory.wram[context.memory.active_wram].get_mut(addr - 0xD000)
-            }
-            0xE000..=0xEFFF => context.memory.wram[0].get_mut(addr - 0xE000),
-            0xF000..=0xFDFF => {
-                context.memory.wram[context.memory.active_wram].get_mut(addr - 0xF000)
-            }
-            0xFE00..=0xFE9F => context.memory.oam.get_mut(addr - 0xFE00),
+            0x8000..=0x9FFF => self.vram[self.active_vram].get_mut(addr - 0x8000),
+            0xA000..=0xBFFF => self.eram[self.active_eram].get_mut(addr - 0xA000),
+            0xC000..=0xCFFF => self.wram[0].get_mut(addr - 0xC000),
+            0xD000..=0xDFFF => self.wram[self.active_wram].get_mut(addr - 0xD000),
+            0xE000..=0xEFFF => self.wram[0].get_mut(addr - 0xE000),
+            0xF000..=0xFDFF => self.wram[self.active_wram].get_mut(addr - 0xF000),
+            0xFE00..=0xFE9F => self.oam.get_mut(addr - 0xFE00),
             0xFEA0..=0xFEFF => {
                 // https://gbdev.io/pandocs/Memory_Map.html#fea0feff-range
                 // return Err(GBError::IllegalAddress(addr as u16));
                 return Ok(());
             }
-            0xFF00..=0xFF7F => {
-                match addr {
-                    0xFF00 => {
-                        let byte = context.memory.io.get_mut(addr - 0xFF00);
-                        let reg = byte.unwrap();
-                        *reg = alu::set_bit(*reg, 4, alu::read_bits(value, 4, 1) == 1);
-                        *reg = alu::set_bit(*reg, 5, alu::read_bits(value, 5, 1) == 1);
-                        context.joypad.query_joypad(&mut context.memory);
-                        return Ok(());
-                    }
-                    0xFF01 => {
-                        context.serial_message.push(value);
-                    }
-                    0xFF04 => {
-                        let byte = context.memory.io.get_mut(addr - 0xFF00);
-                        *byte.unwrap() = 0;
-                        return Ok(());
-                    }
-                    0xFF11 => context.apu.pulse_1.length_timer = 64 - alu::read_bits(value, 0, 6),
-                    0xFF16 => context.apu.pulse_2.length_timer = 64 - alu::read_bits(value, 0, 6),
-                    0xFF14 => {
-                        if alu::read_bits(value, 7, 1) == 1 {
-                            context.apu.pulse_1.reset(
-                                context.memory.io[0x12],
-                                context.memory.io[0x13],
-                                value,
-                            );
-                        }
-                    }
-                    0xFF19 => {
-                        if alu::read_bits(value, 7, 1) == 1 {
-                            context.apu.pulse_2.reset(
-                                context.memory.io[0x17],
-                                context.memory.io[0x18],
-                                value,
-                            );
-                        }
-                    }
-                    0xFF1A => context.apu.wave.dac_enable = alu::read_bits(value, 7, 1) == 1,
-                    0xFF1B => context.apu.wave.length_timer = 256 - value as u16,
-                    0xFF1E => {
-                        if alu::read_bits(value, 7, 1) == 1 {
-                            context.apu.wave.reset(
-                                context.memory.io[0x1C],
-                                context.memory.io[0x1D],
-                                value,
-                            );
-                        }
-                    }
-                    0xFF30..0xFF40 => context
-                        .apu
-                        .wave
-                        .load_wave_pattern(context.memory.io[0x30..0x40].try_into().unwrap()),
-                    0xFF46 => {
-                        MemoryMap::oam_transfer(context, value);
-                    }
-                    _ => (),
-                };
-                context.memory.io.get_mut(addr - 0xFF00)
-            }
-            0xFF80..=0xFFFE => context.memory.hram.get_mut(addr - 0xFF80),
-            0xFFFF => Some(&mut context.memory.ie),
+            0xFF00..=0xFF7F => self.io.get_mut(addr - 0xFF00),
+            0xFF80..=0xFFFE => self.hram.get_mut(addr - 0xFF80),
+            0xFFFF => Some(&mut self.ie),
             _ => None,
         };
         if let Some(mem_ptr) = opt_mem_ptr {
@@ -164,16 +95,6 @@ impl MemoryMap {
         } else {
             Err(GBError::BadAddress(addr as u16))
         }
-    }
-    /// +1 M-C (4 T-C)
-    pub fn read(context: &mut Bus, addr: u16) -> Result<u8, GBError> {
-        context.tick();
-        MemoryMap::dma_read(context, addr as usize)
-    }
-    /// +1 M-C (4 T-C)
-    pub fn write(context: &mut Bus, addr: u16, value: u8) -> Result<(), GBError> {
-        context.tick();
-        MemoryMap::dma_write(context, addr as usize, value)
     }
     /// +160 M-C (640 T-C)
     pub fn oam_transfer(context: &mut Bus, addr: u8) {

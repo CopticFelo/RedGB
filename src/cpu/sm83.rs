@@ -5,7 +5,6 @@ use crate::{
     bus::Bus,
     cpu::{alu, handlers::*, reg_file::Flag},
     error::GBError,
-    mem::map::MemoryMap,
 };
 
 pub struct SM83;
@@ -51,22 +50,22 @@ impl SM83 {
                 } // LD SP HL
                 0xE0 => {
                     let addr = 0xFF00 + bus.fetch() as u16;
-                    MemoryMap::write(bus, addr, bus.registers.a)?;
+                    bus.write(addr, bus.registers.a)?;
                     Ok(format!("ldh [{:#X}] a", addr))
                 } // LDH [A8] A
                 0xF0 => {
                     let addr = 0xFF00 + bus.fetch() as u16;
-                    bus.registers.a = MemoryMap::read(bus, addr)?;
+                    bus.registers.a = bus.read(addr)?;
                     Ok(format!("ldh a [{:#X}]", addr))
                 } // LDH A [A8]
                 0xE2 => {
                     let addr = 0xFF00 + bus.registers.c as u16;
-                    MemoryMap::write(bus, addr, bus.registers.a)?;
+                    bus.write(addr, bus.registers.a)?;
                     Ok("ldh [C] a".to_string())
                 } // LDH [C] A
                 0xF2 => {
                     let addr = 0xFF00 + bus.registers.c as u16;
-                    bus.registers.a = MemoryMap::read(bus, addr)?;
+                    bus.registers.a = bus.read(addr)?;
                     Ok("ldh a [C]".to_string())
                 } // LDH A [C]
                 0x8 => loads_16::ld_n16_sp(bus),       // LD [imm16] SP
@@ -171,9 +170,9 @@ impl SM83 {
                 bus.tick();
                 let target_address = (0x40 + 8 * i) as u16;
                 bus.registers.sp -= 1;
-                MemoryMap::write(bus, bus.registers.sp, (bus.registers.pc >> 8) as u8)?;
+                bus.write(bus.registers.sp, (bus.registers.pc >> 8) as u8)?;
                 bus.registers.sp -= 1;
-                MemoryMap::write(bus, bus.registers.sp, (bus.registers.pc & 0xFF) as u8)?;
+                bus.write(bus.registers.sp, (bus.registers.pc & 0xFF) as u8)?;
                 bus.registers.pc = target_address;
                 bus.tick();
                 break;

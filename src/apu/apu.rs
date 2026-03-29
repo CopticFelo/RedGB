@@ -17,7 +17,7 @@ const T_CYCLES_PER_SAMPLE: f32 = 4194304.0 / 44100.0;
 use crate::{
     apu::{channel::AudioChannel, pulse::PulseChannel, wave::WaveChannel},
     cpu::alu,
-    mem::map::MemoryMap,
+    mem::map::Memory,
 };
 
 pub struct APU {
@@ -42,7 +42,7 @@ impl APU {
             wave: WaveChannel::default(),
         }
     }
-    pub fn init(&mut self, mem: &MemoryMap) {
+    pub fn init(&mut self, mem: &Memory) {
         // Trigger
         self.pulse_1.is_on = alu::read_bits(mem.io[NR14], 7, 1) == 1;
         self.pulse_2.is_on = alu::read_bits(mem.io[NR24], 7, 1) == 1;
@@ -54,7 +54,7 @@ impl APU {
         self.pulse_1.read_period(mem.io[NR13], mem.io[NR14]);
         self.pulse_2.read_period(mem.io[NR23], mem.io[NR24]);
     }
-    pub fn tick(&mut self, mem: &MemoryMap) {
+    pub fn tick(&mut self, mem: &Memory) {
         self.last_cycle += 4;
         self.accumulator += 4.0;
         if self.last_cycle == 8192 {

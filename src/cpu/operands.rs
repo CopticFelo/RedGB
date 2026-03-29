@@ -2,7 +2,6 @@ use crate::{
     bus::Bus,
     cpu::{alu, reg_file::RegFile},
     error::GBError,
-    mem::map::MemoryMap,
 };
 
 const REG_NAMES: [&str; 8] = ["b", "c", "d", "e", "h", "l", "", "a"];
@@ -35,7 +34,7 @@ impl R8 {
     pub fn read(&self, bus: &mut Bus) -> Result<u8, GBError> {
         match self {
             Self::Register(reg) => Ok(*bus.registers.match_r8(*reg)?),
-            Self::Hl(addr) => Ok(MemoryMap::read(bus, *addr)?),
+            Self::Hl(addr) => Ok(bus.read(*addr)?),
             Self::N8(n) => Ok(*n),
         }
     }
@@ -47,7 +46,7 @@ impl R8 {
                 Ok(())
             }
             Self::Hl(addr) => {
-                MemoryMap::write(bus, *addr, value)?;
+                bus.write(*addr, value)?;
                 Ok(())
             }
             Self::N8(_) => Ok(()),

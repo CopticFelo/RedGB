@@ -1,4 +1,4 @@
-use crate::{bus::Bus, cpu::alu, error::GBError, mem::map::MemoryMap};
+use crate::{bus::Bus, cpu::alu, error::GBError};
 
 const CONDITION_NAMES: [&str; 4] = ["nz", "z", "nc", "c"];
 
@@ -39,9 +39,9 @@ pub fn call(bus: &mut Bus, opcode: u8) -> Result<String, GBError> {
     log += &format!(" {:#X}", target_address);
     if bus.registers.match_condition(condition)? || !is_conditional {
         bus.registers.sp -= 1;
-        MemoryMap::write(bus, bus.registers.sp, (bus.registers.pc >> 8) as u8)?;
+        bus.write(bus.registers.sp, (bus.registers.pc >> 8) as u8)?;
         bus.registers.sp -= 1;
-        MemoryMap::write(bus, bus.registers.sp, (bus.registers.pc & 0xFF) as u8)?;
+        bus.write(bus.registers.sp, (bus.registers.pc & 0xFF) as u8)?;
         bus.registers.pc = target_address;
         bus.tick();
     }
@@ -65,9 +65,9 @@ pub fn ret(bus: &mut Bus, opcode: u8) -> Result<String, GBError> {
             return Ok(log);
         }
     }
-    let lsb = MemoryMap::read(bus, bus.registers.sp)?;
+    let lsb = bus.read(bus.registers.sp)?;
     bus.registers.sp += 1;
-    let msb = MemoryMap::read(bus, bus.registers.sp)?;
+    let msb = bus.read(bus.registers.sp)?;
     bus.registers.sp += 1;
     let addr = alu::read_u16(&lsb, &msb);
     bus.tick();
@@ -79,9 +79,9 @@ pub fn rst(bus: &mut Bus, opcode: u8) -> Result<String, GBError> {
     let addr = (alu::read_bits(opcode, 3, 3) * 8) as u16;
     bus.tick();
     bus.registers.sp -= 1;
-    MemoryMap::write(bus, bus.registers.sp, (bus.registers.pc >> 8) as u8)?;
+    bus.write(bus.registers.sp, (bus.registers.pc >> 8) as u8)?;
     bus.registers.sp -= 1;
-    MemoryMap::write(bus, bus.registers.sp, (bus.registers.pc & 0xFF) as u8)?;
+    bus.write(bus.registers.sp, (bus.registers.pc & 0xFF) as u8)?;
     bus.registers.pc = addr;
     Ok(format!("rst {:#X}", addr))
 }

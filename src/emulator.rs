@@ -53,7 +53,7 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
         .event_pump()
         .expect("Error: Could not capture game input");
     let registers = RegFile::new(Modes::DMG);
-    let memory = map::MemoryMap::init_rom(rom, header_data);
+    let memory = map::Memory::init_rom(rom, header_data);
     let ppu = PPU::new();
     let mut time = Instant::now();
     let target = Duration::new(0, 16666667);

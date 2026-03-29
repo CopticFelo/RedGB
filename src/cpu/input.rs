@@ -1,6 +1,6 @@
 use sdl3::keyboard::Keycode;
 
-use crate::{cpu::alu, mem::map::MemoryMap};
+use crate::{cpu::alu, mem::map::Memory};
 
 #[derive(Default)]
 pub struct Joypad {
@@ -28,7 +28,7 @@ impl Joypad {
             _ => (),
         }
     }
-    pub fn query_joypad(&mut self, mem: &mut MemoryMap) {
+    pub fn query_joypad(&mut self, mem: &mut Memory) {
         if alu::read_bits(mem.io[0], 5, 1) == 0 {
             mem.io[0] = alu::set_bit(mem.io[0], 0, !self.a);
             mem.io[0] = alu::set_bit(mem.io[0], 1, !self.b);

@@ -5,7 +5,6 @@ use log::trace;
 use crate::bus::Bus;
 use crate::cpu::alu;
 use crate::error::GBError;
-use crate::mem::map::MemoryMap;
 use crate::ppu::sprite::GBSprite;
 
 const IF: usize = 0x0F;
@@ -63,10 +62,10 @@ impl PPU {
         let ly = bus.memory.io[LY];
         let mut index = 0;
         for obj_addr in (0xFE00..0xFEA0).step_by(4) {
-            let y = (MemoryMap::dma_read(bus, obj_addr)? as u16 as i16) - 16;
-            let x = (MemoryMap::dma_read(bus, obj_addr + 1)? as u16 as i16) - 8;
-            let tile_index = MemoryMap::dma_read(bus, obj_addr + 2)?;
-            let attributes = MemoryMap::dma_read(bus, obj_addr + 3)?;
+            let y = (bus.memory.dma_read(obj_addr)? as u16 as i16) - 16;
+            let x = (bus.memory.dma_read(obj_addr + 1)? as u16 as i16) - 8;
+            let tile_index = bus.memory.dma_read(obj_addr + 2)?;
+            let attributes = bus.memory.dma_read(obj_addr + 3)?;
             let obj_size = if alu::read_bits(bus.memory.io[LCDC], 2, 1) == 1 {
                 15
             } else {
@@ -102,8 +101,8 @@ impl PPU {
             (base_ptr as isize + (16_isize * tile_index as i8 as isize)) as usize
         } + (2 * tile_row) as usize;
         let tile_line: (u8, u8) = (
-            MemoryMap::dma_read(bus, addr).unwrap(),
-            MemoryMap::dma_read(bus, addr + 1).unwrap(),
+            bus.memory.dma_read(addr).unwrap(),
+            bus.memory.dma_read(addr + 1).unwrap(),
         );
         tile_line
     }
@@ -135,14 +134,14 @@ impl PPU {
             0x9800_usize
         } + map_row * 32;
         let pixel_row = ((ly + scy) & 7) as u8;
-        let mut tile_index = MemoryMap::dma_read(bus, map_addr + map_col)?;
+        let mut tile_index = bus.memory.dma_read(map_addr + map_col)?;
         let mut tile = PPU::fetch_tile_line(bus, tile_index, pixel_row, false);
         for (offset, virtual_index) in (scx..(scx + 160)).enumerate() {
             let tilemap_pixel_index = virtual_index & 255;
             let new_map_col = tilemap_pixel_index >> 3;
             if map_col != new_map_col {
                 map_col = new_map_col;
-                tile_index = MemoryMap::dma_read(bus, map_addr + map_col)?;
+                tile_index = bus.memory.dma_read(map_addr + map_col)?;
                 tile = PPU::fetch_tile_line(bus, tile_index, pixel_row, false);
             }
             let curr_tile_pixel = 7 - (tilemap_pixel_index & 7);
@@ -199,7 +198,7 @@ impl PPU {
         } else {
             0x9C00
         } + 32 * (window_y >> 3);
-        let mut tile_index = MemoryMap::dma_read(bus, window_map_addr)?;
+        let mut tile_index = bus.memory.dma_read(window_map_addr)?;
         let mut tile = PPU::fetch_tile_line(bus, tile_index, pixel_row, false);
         for (offset, pixel_index) in (wx..wx + 167).enumerate() {
             if pixel_index > 159 {
@@ -210,7 +209,7 @@ impl PPU {
             let new_map_col = offset >> 3;
             if new_map_col != map_col {
                 map_col = new_map_col;
-                tile_index = MemoryMap::dma_read(bus, window_map_addr + map_col)?;
+                tile_index = bus.memory.dma_read(window_map_addr + map_col)?;
                 tile = PPU::fetch_tile_line(bus, tile_index, pixel_row, false);
             }
             let curr_tile_pixel = 7 - (offset & 7);
