@@ -61,7 +61,7 @@ impl Bus {
     pub fn tick(&mut self) {
         self.t_cycles += 4_u64;
         self.ppu.tick(&mut self.memory, &self.t_cycles);
-        GBTimer::tick(self);
+        self.gbtimer.tick(&mut self.memory, &self.t_cycles);
         self.apu.tick(&self.memory);
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {

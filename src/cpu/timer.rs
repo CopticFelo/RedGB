@@ -1,6 +1,6 @@
 use log::trace;
 
-use crate::{bus::Bus, cpu::alu};
+use crate::{bus::Bus, cpu::alu, mem::map::Memory};
 
 const TIMA: usize = 0x05;
 const TMA: usize = 0x06;
@@ -15,35 +15,35 @@ pub struct GBTimer {
 }
 
 impl GBTimer {
-    pub fn tick(context: &mut Bus) {
-        if context.t_cycles.abs_diff(context.gbtimer.div_last) >= 256 {
-            context.memory.io[DIV] = context.memory.io[DIV].wrapping_add(1);
-            context.gbtimer.div_last = context.t_cycles;
+    pub fn tick(&mut self, mem: &mut Memory, t_cycles: &u64) {
+        if t_cycles.abs_diff(self.div_last) >= 256 {
+            mem.io[DIV] = mem.io[DIV].wrapping_add(1);
+            self.div_last = *t_cycles;
         }
-        if alu::read_bits(context.memory.io[TAC], 2, 1) == 1 {
-            Self::tima_step(context);
+        if alu::read_bits(mem.io[TAC], 2, 1) == 1 {
+            self.tima_step(mem, t_cycles);
         }
     }
-    pub fn tima_step(context: &mut Bus) {
-        let inc_per_cycle = match alu::read_bits(context.memory.io[TAC], 0, 2) {
+    pub fn tima_step(&mut self, mem: &mut Memory, t_cycles: &u64) {
+        let inc_per_cycle = match alu::read_bits(mem.io[TAC], 0, 2) {
             0b00 => 1024,
             0b01 => 16,
             0b10 => 64,
             0b11 => 256,
             _ => unreachable!(),
         };
-        if context.t_cycles.abs_diff(context.gbtimer.tima_last) >= inc_per_cycle {
-            context.memory.io[TIMA] = {
-                let (value, overflow) = context.memory.io[TIMA].overflowing_add(1);
+        if t_cycles.abs_diff(self.tima_last) >= inc_per_cycle {
+            mem.io[TIMA] = {
+                let (value, overflow) = mem.io[TIMA].overflowing_add(1);
                 if overflow {
                     trace!("Timer Overflow");
-                    context.memory.io[IF] = alu::set_bit(context.memory.io[IF], 2, true);
-                    context.memory.io[TMA]
+                    mem.io[IF] = alu::set_bit(mem.io[IF], 2, true);
+                    mem.io[TMA]
                 } else {
                     value
                 }
             };
-            context.gbtimer.tima_last = context.t_cycles;
+            self.tima_last = *t_cycles;
         }
     }
 }
