@@ -1,18 +1,7 @@
+#[derive(Debug)]
 pub enum CGBMode {
     Monochrome,
     Color { exclusive: bool },
-}
-
-// TODO: Just derive debug lil bro
-impl std::fmt::Display for CGBMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let out = match self {
-            CGBMode::Color { exclusive: true } => "Exclusive",
-            CGBMode::Color { exclusive: false } => "Compatible",
-            _ => "Monochrome",
-        };
-        write!(f, "{out}")
-    }
 }
 
 impl Default for CGBMode {
@@ -21,6 +10,7 @@ impl Default for CGBMode {
     }
 }
 
+#[derive(Debug)]
 pub struct ROMInfo {
     pub title: String,
     pub cgb: CGBMode,

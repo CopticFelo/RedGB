@@ -83,8 +83,7 @@ pub fn parse_rom_header(rom: &Vec<u8>) -> ROMInfo {
         header_checksum,
         rom_checksum,
     };
-    println!("{}", info.title);
-    println!("{}", info.cgb);
+    println!("{:#?}", info);
     info
 }
 
