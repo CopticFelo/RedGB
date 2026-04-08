@@ -40,8 +40,10 @@ impl PPU {
         if t_cycles.abs_diff(self.last_cycle) >= 456 {
             if mem.io[LY] < 144 {
                 let _ = self.draw_scanline(mem);
-                let h_blank = alu::read_bits(mem.io[STAT], 3, 1) == 1;
-                if h_blank {
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, false);
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
+                let is_interrupt = alu::read_bits(mem.io[STAT], 3, 1) == 1;
+                if is_interrupt {
                     mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
                 }
             }
@@ -58,6 +60,7 @@ impl PPU {
             mem.io[LY] = 0;
         } else if mem.io[LY] == 144 {
             mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
+            mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
             mem.io[0x0F] = alu::set_bit(mem.io[0x0F], 0, true);
         }
     }
