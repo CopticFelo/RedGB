@@ -1,4 +1,5 @@
 pub mod mbc1;
+pub mod mbc2;
 use crate::{cpu::alu, rom::rom_info::ROMInfo};
 
 pub trait Mbc: std::fmt::Debug {

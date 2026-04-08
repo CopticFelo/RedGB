@@ -5,7 +5,7 @@ use crate::{
     bus::Bus,
     cpu::alu,
     error::GBError,
-    mbc::{Mbc, MbcFactory, mbc1::MBC1},
+    mbc::{Mbc, MbcFactory, mbc1::MBC1, mbc2::MBC2},
     rom::rom_info::ROMInfo,
 };
 
@@ -28,6 +28,13 @@ pub struct Memory {
 }
 
 impl Memory {
+    pub fn create_controller(header_data: &ROMInfo) -> Box<dyn Mbc> {
+        match header_data.cartridge_type {
+            0..=3 => Box::new(MBC1::new(header_data)),
+            5..=6 => Box::new(MBC2::new(header_data)),
+            _ => todo!(),
+        }
+    }
     pub fn init_rom(rom: Vec<u8>, header_data: ROMInfo) -> Self {
         let mut rom_banks: Vec<Vec<u8>> = Vec::new();
         for bank in rom.chunks(0x4000) {
@@ -48,7 +55,7 @@ impl Memory {
             io: vec![0; 0x80],
             hram: vec![0; 0x7F],
             ie: 0,
-            controller: Box::new(MBC1::new(&header_data)),
+            controller: Self::create_controller(&header_data),
         }
     }
     pub fn dma_read(&self, addr: usize) -> Result<u8, GBError> {
