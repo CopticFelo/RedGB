@@ -26,7 +26,7 @@ impl Mbc for MBC1 {
                     self.bank_1 += 1
                 }
             }
-            0x4000..0x6000 => self.bank_2 = alu::read_bits(value, 0, 4),
+            0x4000..0x6000 => self.bank_2 = alu::read_bits(value, 0, 2),
             0x6000..0x8000 => {
                 self.mode = alu::read_bits(value, 0, 1);
             }
