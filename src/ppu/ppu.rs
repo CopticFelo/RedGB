@@ -57,6 +57,7 @@ impl PPU {
         } else if mem.io[LY] > 153 {
             mem.io[LY] = 0;
         } else if mem.io[LY] == 144 {
+            mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
             mem.io[0x0F] = alu::set_bit(mem.io[0x0F], 0, true);
         }
     }
