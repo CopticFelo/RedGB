@@ -26,7 +26,6 @@ Be warned that most games still don't work, any game that depends on anything be
     - [x] MBC1
     - [x] MBC2
     - [ ] MBC3
-    - [ ] MBC4
     - [ ] MBC5
     - [ ] MBC6
     - [ ] MBC7
