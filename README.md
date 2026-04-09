@@ -23,8 +23,8 @@ Be warned that most games still don't work, any game that depends on anything be
         - [ ] Selection Priority
         - [ ] Drawing Priority
 - [ ] Memory banking
-    - [x] MBC1 (Partial)
-    - [ ] MBC2
+    - [x] MBC1
+    - [x] MBC2
     - [ ] MBC3
     - [ ] MBC4
     - [ ] MBC5
