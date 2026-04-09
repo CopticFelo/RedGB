@@ -18,4 +18,8 @@ pub enum GBError {
     IllegalInstruction(u8),
     #[error("Error: Trying to insert {length} bits at index {index} (Overflow)")]
     ByteOverflow { length: u8, index: u8 },
+    #[error("Failed to save :<")]
+    SaveError,
+    #[error("Failed to load :<")]
+    LoadError,
 }

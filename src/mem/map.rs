@@ -19,7 +19,7 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn create_controller(rom: Vec<u8>, header_data: &ROMInfo) -> Box<dyn Mbc> {
+    pub fn create_controller(rom: Vec<u8>, header_data: ROMInfo) -> Box<dyn Mbc> {
         match header_data.cartridge_type {
             0..=3 => Box::new(MBC1::new(rom, header_data)),
             5..=6 => Box::new(MBC2::new(rom, header_data)),
@@ -36,7 +36,7 @@ impl Memory {
             io: vec![0; 0x80],
             hram: vec![0; 0x7F],
             ie: 0,
-            controller: Self::create_controller(rom, &header_data),
+            controller: Self::create_controller(rom, header_data),
         }
     }
     pub fn dma_read(&self, addr: usize) -> Result<u8, GBError> {
