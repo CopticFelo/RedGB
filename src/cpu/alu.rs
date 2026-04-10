@@ -9,14 +9,13 @@ pub fn write_u16(lo: &mut u8, hi: &mut u8, value: u16) {
     *lo = value as u8;
 }
 
+#[inline(always)]
 pub fn read_bits(num: u8, index: u8, length: u8) -> u8 {
-    let mut out = 0;
-    let mut index = index;
-    for i in 0..length {
-        out += ((num >> index) & 1) * 2_u8.pow(i as u32);
-        index += 1;
+    if length > 7 {
+        num >> index
+    } else {
+        (num >> index) & (1u8 << length).wrapping_sub(1)
     }
-    out
 }
 
 pub fn set_bit(num: u8, index: u8, bit: bool) -> u8 {
