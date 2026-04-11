@@ -26,7 +26,7 @@ fn main() {
         }
         #[cfg(debug_assertions)]
         {
-            rom_path = "/home/felo/dev/rust/RedGB/test_roms/tetris.gb".to_string();
+            rom_path = "/home/felo/dev/rust/RedGB/test_roms/rtc3test.gb".to_string();
         }
     } else {
         rom_path = args[1].clone();

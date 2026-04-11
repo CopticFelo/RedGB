@@ -7,6 +7,7 @@ use crate::{
     apu::{apu::APU, channel::AudioChannel},
     cpu::{alu, input::Joypad, reg_file::RegFile, timer::GBTimer},
     error::GBError,
+    mbc::mbc3::MBC3,
     mem::map::Memory,
     ppu::ppu::PPU,
 };
@@ -61,6 +62,10 @@ impl Bus {
         self.ppu.tick(&mut self.memory, &self.t_cycles);
         self.gbtimer.tick(&mut self.memory, &self.t_cycles);
         self.apu.tick(&self.memory);
+
+        if let Some(mbc3) = self.memory.controller.as_any().downcast_mut::<MBC3>() {
+            mbc3.rtc.tick(&self.t_cycles);
+        }
 
         if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
             self.memory.io[SB] <<= 1;

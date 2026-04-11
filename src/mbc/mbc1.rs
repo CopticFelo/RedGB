@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::{cpu::alu, error::GBError, rom::rom_info::ROMInfo};
 
 use super::{Mbc, MbcFactory};
@@ -16,6 +18,9 @@ pub struct MBC1 {
     mode: u8,
 }
 impl Mbc for MBC1 {
+    fn as_any(&mut self) -> &mut dyn Any {
+        self
+    }
     fn load(&mut self) -> Result<(), GBError> {
         let data = match std::fs::read(format!(
             "{}.sav",
@@ -63,16 +68,21 @@ impl Mbc for MBC1 {
             _ => None,
         }
     }
-    fn read(&self, addr: usize) -> &u8 {
+    fn read(&self, addr: usize) -> u8 {
         match addr {
-            0x0..0x4000 => self.rom_banks[self.rom_index_a].get(addr).unwrap_or(&0xFF),
+            0x0..0x4000 => self.rom_banks[self.rom_index_a]
+                .get(addr)
+                .copied()
+                .unwrap_or(0xFF),
             0x4000..0x8000 => self.rom_banks[self.rom_index_b]
                 .get(addr - 0x4000)
-                .unwrap_or(&0xFF),
+                .copied()
+                .unwrap_or(0xFF),
             0xA000..0xC000 => self.eram[self.eram_index]
                 .get(addr - 0xA000)
-                .unwrap_or(&0xFF),
-            _ => &0xFF,
+                .copied()
+                .unwrap_or(0xFF),
+            _ => 0xFF,
         }
     }
     fn write(&mut self, addr: u16, value: u8) {
