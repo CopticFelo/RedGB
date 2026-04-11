@@ -162,10 +162,10 @@ impl RTC {
         let total_mins = self.minutes as u64 + (total_seconds / 60);
         self.minutes = (total_mins % 60) as u8;
 
-        let total_hours = self.hours as u64 + (total_seconds / 3600);
+        let total_hours = self.hours as u64 + (total_mins / 60);
         self.hours = (total_hours % 24) as u8;
 
-        let total_days = self.days as u64 + (total_seconds / 86400);
+        let total_days = self.days as u64 + (total_hours / 24);
         self.days = (total_days % 512) as u16;
 
         if total_days >= 512 {
