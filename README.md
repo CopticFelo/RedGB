@@ -25,7 +25,7 @@ Be warned that most games still don't work, any game that depends on anything be
 - [ ] Memory banking
     - [x] MBC1
     - [x] MBC2
-    - [ ] MBC3
+    - [x] MBC3
     - [ ] MBC5
     - [ ] MBC6
     - [ ] MBC7
