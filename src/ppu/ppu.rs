@@ -224,8 +224,8 @@ impl PPU {
         let ly: usize = mem.io[LY] as usize;
         let wy = mem.io[WY] as usize;
         let wx = mem.io[WX] as isize - 7;
-        let pixel_row = (ly & 7) as u8;
         let window_y = ly - wy;
+        let pixel_row = (window_y & 7) as u8;
         let mut map_col = 0;
         let window_map_addr = if alu::read_bits(lcdc, 6, 1) == 0 {
             0x9800
