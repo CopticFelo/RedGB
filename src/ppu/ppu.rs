@@ -25,6 +25,7 @@ pub struct PPU {
     last_cycle: u64,
     pub framebuffer: Vec<u8>,
     pub frame_flag: bool,
+    current_oam: Option<[Option<GBSprite>; 10]>,
 }
 
 impl PPU {
@@ -33,12 +34,28 @@ impl PPU {
             frame_flag: false,
             last_cycle: 0,
             framebuffer: vec![0x0; 160 * 144 * 3],
+            current_oam: None,
         }
     }
 
     pub fn tick(&mut self, mem: &mut Memory, t_cycles: &u64) {
-        if t_cycles.abs_diff(self.last_cycle) >= 456 {
-            if mem.io[LY] < 144 {
+        match (t_cycles.abs_diff(self.last_cycle), mem.io[LY]) {
+            (0..=4, ..144) => {
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, false);
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, true);
+                self.current_oam = PPU::fetch_from_oam(mem).ok();
+                let is_interrupt = alu::read_bits(mem.io[STAT], 5, 1) == 1;
+                if is_interrupt {
+                    mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
+                }
+            }
+            (80, ..144) => {
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, true);
+            }
+            // TODO: You need to actually calculate how much does mode 3 take instead of assuming
+            // max length
+            (348, ..144) => {
                 let _ = self.draw_scanline(mem);
                 mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, false);
                 mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
@@ -47,21 +64,31 @@ impl PPU {
                     mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
                 }
             }
-            mem.io[LY] = mem.io[LY].wrapping_add(1);
-            self.last_cycle = *t_cycles;
-            trace!("LY: {}", mem.io[LY]);
-            trace!("Framebuffer: {:#?}", &self.framebuffer[0..20]);
+            (456.., _) => {
+                mem.io[LY] = mem.io[LY].wrapping_add(1);
+                self.last_cycle = *t_cycles;
+                trace!("LY: {}", mem.io[LY]);
+                trace!("Framebuffer: {:#?}", &self.framebuffer[0..20]);
+            }
+            _ => (),
+        }
+        match mem.io[LY] {
+            144 => {
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
+                mem.io[0x0F] = alu::set_bit(mem.io[0x0F], 0, true);
+            }
+            154.. => {
+                mem.io[LY] = 0;
+            }
+            _ => (),
         }
         let lyc_interrupt = alu::read_bits(mem.io[STAT], 6, 1) == 1;
         if mem.io[LY] == mem.io[LYC] && lyc_interrupt {
             mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
             mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, true);
-        } else if mem.io[LY] > 153 {
-            mem.io[LY] = 0;
-        } else if mem.io[LY] == 144 {
-            mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
-            mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
-            mem.io[0x0F] = alu::set_bit(mem.io[0x0F], 0, true);
+        } else {
+            mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, false);
         }
     }
     fn fetch_from_oam(mem: &Memory) -> Result<[Option<GBSprite>; 10], GBError> {
@@ -158,9 +185,12 @@ impl PPU {
         Ok(())
     }
     fn draw_sprites(&mut self, mem: &Memory) -> Result<(), GBError> {
+        if self.current_oam.is_none() {
+            log::error!("No sprites");
+            return Ok(());
+        }
         let ly: usize = mem.io[LY] as usize;
-        let sprite_table = PPU::fetch_from_oam(mem)?;
-        for sprite in sprite_table.into_iter().flatten() {
+        for sprite in self.current_oam.unwrap().into_iter().flatten() {
             let tile_height = if alu::read_bits(mem.io[LCDC], 2, 1) == 1 {
                 15
             } else {
