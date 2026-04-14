@@ -25,11 +25,18 @@ const WY: usize = 0x4A;
 const WX: usize = 0x4B;
 
 #[derive(PartialEq)]
+enum DrawLayer {
+    Bg,
+    Obj,
+    Window,
+}
+
+#[derive(PartialEq)]
 enum PPUMode {
     HBlank,
     VBlank,
     Scan,
-    Draw,
+    Draw(DrawLayer),
 }
 
 pub struct PPU {
@@ -98,19 +105,18 @@ impl PPU {
                     mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
                 }
                 self.discard_counter = mem.io[SCX] & 7;
-                self.mode = PPUMode::Draw;
+                self.mode = PPUMode::Draw(DrawLayer::Bg);
                 // 80-4 = 76
                 self.cycle_deficit += 76;
             }
-            PPUMode::Draw => {
-                self.mode = PPUMode::Draw;
+            PPUMode::Draw(_) => {
                 mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
                 mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, true);
                 if self.bg_fifo.is_empty() {
                     for _ in 0..2 {
                         let _ = match self.fetcher.phase {
                             0 => self.fetcher.fetch_bg_tile(mem, self.lx),
-                            1 | 2 => self.fetcher.fetch_tile_data(mem),
+                            1 | 2 => self.fetcher.fetch_tile_data(mem, self.lx),
                             3 => {
                                 self.fetcher.push_to_fifo(mem, &mut self.bg_fifo);
                                 Ok(0)
@@ -121,6 +127,23 @@ impl PPU {
                 }
                 if !self.bg_fifo.is_empty() {
                     for _ in 0..4 {
+                        let wy = mem.io[WY];
+                        let wx = mem.io[WX] as isize - 7;
+                        let lcdc = mem.io[LCDC];
+                        // TODO: This is disgusting, clean up later please
+                        let is_window = alu::read_bits(lcdc, 5, 1) == 1
+                            && (wx..(wx + 160)).contains(&(self.lx as isize))
+                            && wy <= mem.io[LY];
+                        if is_window
+                            && let PPUMode::Draw(layer) = &self.mode
+                            && *layer != DrawLayer::Window
+                        {
+                            self.mode = PPUMode::Draw(DrawLayer::Window);
+                            self.bg_fifo.clear();
+                            break;
+                        } else if !is_window {
+                            self.mode = PPUMode::Draw(DrawLayer::Bg);
+                        }
                         let pixel = self.bg_fifo.pop_front().unwrap();
                         if self.discard_counter == 0 {
                             let framebuffer_index =

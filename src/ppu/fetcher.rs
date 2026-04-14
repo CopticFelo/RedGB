@@ -49,15 +49,15 @@ impl Fetcher {
         let wx = mem.io[WX] as isize - 7;
         let ly = mem.io[LY];
         let lcdc = mem.io[LCDC];
-        let is_window =
-            alu::read_bits(lcdc, 5, 1) == 1 && (wx..wx + 160).contains(&(lx as isize)) && wy <= ly;
+        let is_window = alu::read_bits(lcdc, 5, 1) == 1
+            && (wx..(wx + 160)).contains(&(lx as isize))
+            && wy <= ly;
         let tile_addr: u16 = {
-            if is_window {
+            if is_window && (lx as isize - wx) >= 0 {
                 let base = 0x9800;
                 let tile_map = (alu::read_bits(lcdc, 6, 1) as u16) << 10;
-                // NOTE: wtf
-                let tile_map_y = (ly - wy) as u16 & 7;
-                let tile_map_x = (lx - ly) as u16 & 7;
+                let tile_map_y = ((ly - wy) as u16 >> 3) << 5;
+                let tile_map_x = (lx as isize - wx) as u16 >> 3;
                 base | tile_map | tile_map_y | tile_map_x
             } else {
                 let base = 0x9800;
@@ -74,16 +74,25 @@ impl Fetcher {
         self.phase = (self.phase + 1) & 3;
         Ok(2)
     }
-    pub fn fetch_tile_data(&mut self, mem: &Memory) -> Result<u8, GBError> {
+    pub fn fetch_tile_data(&mut self, mem: &Memory, lx: u8) -> Result<u8, GBError> {
         let scy = mem.io[SCY] as usize;
         let ly = mem.io[LY] as usize;
         let lcdc = mem.io[LCDC];
+        let wy = mem.io[WY];
+        let wx = mem.io[WX] as isize - 7;
         let base_ptr = if alu::read_bits(lcdc, 4, 1) == 1 {
             0x8000
         } else {
             0x9000
         };
-        let tile_row = (ly + scy) & 7;
+        let is_window = alu::read_bits(lcdc, 5, 1) == 1
+            && (wx..wx + 160).contains(&(lx as isize))
+            && wy as usize <= ly;
+        let tile_row = if is_window {
+            (ly - wy as usize) & 7
+        } else {
+            (ly + scy) & 7
+        };
         let addr = if base_ptr == 0x8000 {
             base_ptr + (16_usize * self.current_tile_id as usize)
         } else {
