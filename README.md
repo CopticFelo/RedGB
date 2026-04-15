@@ -10,7 +10,8 @@ cargo run -- path/to/rom.gb
 ```
 
 ## Game support
-Be warned that most games still don't work, any game that depends on anything besides basic MBC1 functionality or Gameboy color games just straight up won't work
+Most Gameboy (DMG) games work but games that rely on mid scanline effects or correct HBlank interrupt timing don't render correctly or straight up don't work (being worked on on the pixel-fifo branch)
+Gameboy color (CGB) is still not supported at all
 
 ## Todo-list
 - [x] CPU
