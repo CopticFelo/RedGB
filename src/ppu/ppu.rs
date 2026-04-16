@@ -109,6 +109,16 @@ impl Default for PPU {
 }
 
 impl PPU {
+    #[inline(always)]
+    fn check_lyc(mem: &mut Memory) {
+        let lyc_interrupt = alu::read_bits(mem.io[STAT], 6, 1) == 1;
+        if mem.io[LY] == mem.io[LYC] && lyc_interrupt {
+            mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
+            mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, true);
+        } else {
+            mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, false);
+        }
+    }
     fn colorise(pixel: &Pixel) -> [u8; 3] {
         let palette = pixel.palette;
         let ids = [
@@ -136,6 +146,7 @@ impl PPU {
             PPUMode::Scan => {
                 self.last_cycle = *t_cycles;
                 self.mode.stat_interrupt(mem);
+                PPU::check_lyc(mem);
                 self.current_oam = PPU::fetch_from_oam(mem).ok();
                 self.discard_counter = mem.io[SCX] & 7;
                 self.mode = PPUMode::Draw(DrawLayer::Bg);
@@ -200,13 +211,6 @@ impl PPU {
                 let draw_len = delta - 80;
                 self.cycle_deficit += 456 - draw_len;
                 mem.io[LY] = mem.io[LY].wrapping_add(1);
-                let lyc_interrupt = alu::read_bits(mem.io[STAT], 6, 1) == 1;
-                if mem.io[LY] == mem.io[LYC] && lyc_interrupt {
-                    mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
-                    mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, true);
-                } else {
-                    mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, false);
-                }
                 if mem.io[LY] == 144 {
                     self.mode = PPUMode::VBlank;
                 } else {
@@ -223,19 +227,14 @@ impl PPU {
                     self.mode.stat_interrupt(mem);
                     self.frame_flag = true;
                     mem.io[IF] = alu::set_bit(mem.io[IF], 0, true);
+                    PPU::check_lyc(mem);
                     mem.io[LY] += 1;
                 } else if mem.io[LY] == 153 {
                     mem.io[LY] = 0;
                     self.mode = PPUMode::Scan;
                 } else {
+                    PPU::check_lyc(mem);
                     mem.io[LY] += 1;
-                    let lyc_interrupt = alu::read_bits(mem.io[STAT], 6, 1) == 1;
-                    if mem.io[LY] == mem.io[LYC] && lyc_interrupt {
-                        mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
-                        mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, true);
-                    } else {
-                        mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, false);
-                    }
                 }
                 self.cycle_deficit += 456;
             }
