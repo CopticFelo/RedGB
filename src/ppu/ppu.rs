@@ -39,6 +39,45 @@ enum PPUMode {
     Draw(DrawLayer),
 }
 
+impl PPUMode {
+    fn stat_interrupt(&mut self, mem: &mut Memory) {
+        match *self {
+            // Mode 2
+            PPUMode::Scan => {
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, false);
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, true);
+                let is_interrupt = alu::read_bits(mem.io[STAT], 5, 1) == 1;
+                if is_interrupt {
+                    mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
+                }
+            }
+            // Mode 3
+            PPUMode::Draw(_) => {
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, true);
+            }
+            // Mode 0
+            PPUMode::HBlank => {
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, false);
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
+                let is_interrupt = alu::read_bits(mem.io[STAT], 3, 1) == 1;
+                if is_interrupt {
+                    mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
+                }
+            }
+            // Mode 1
+            PPUMode::VBlank => {
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
+                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
+                let is_interrupt = alu::read_bits(mem.io[STAT], 4, 1) == 1;
+                if is_interrupt {
+                    mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
+                }
+            }
+        }
+    }
+}
+
 pub struct PPU {
     last_cycle: u64,
     mode: PPUMode,
@@ -96,22 +135,15 @@ impl PPU {
         match self.mode {
             PPUMode::Scan => {
                 self.last_cycle = *t_cycles;
-                self.mode = PPUMode::Scan;
-                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, false);
-                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, true);
+                self.mode.stat_interrupt(mem);
                 self.current_oam = PPU::fetch_from_oam(mem).ok();
-                let is_interrupt = alu::read_bits(mem.io[STAT], 5, 1) == 1;
-                if is_interrupt {
-                    mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
-                }
                 self.discard_counter = mem.io[SCX] & 7;
                 self.mode = PPUMode::Draw(DrawLayer::Bg);
                 // 80-4 = 76
                 self.cycle_deficit += 76;
             }
             PPUMode::Draw(_) => {
-                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
-                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, true);
+                self.mode.stat_interrupt(mem);
                 if self.bg_fifo.is_empty() {
                     for _ in 0..2 {
                         let _ = match self.fetcher.phase {
@@ -164,12 +196,7 @@ impl PPU {
                 }
             }
             PPUMode::HBlank => {
-                mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, false);
-                mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
-                let is_interrupt = alu::read_bits(mem.io[STAT], 3, 1) == 1;
-                if is_interrupt {
-                    mem.io[IF] = alu::set_bit(mem.io[IF], 1, true);
-                }
+                self.mode.stat_interrupt(mem);
                 let draw_len = delta - 80;
                 self.cycle_deficit += 456 - draw_len;
                 mem.io[LY] = mem.io[LY].wrapping_add(1);
@@ -193,10 +220,9 @@ impl PPU {
             PPUMode::VBlank => {
                 if mem.io[LY] == 144 {
                     self.mode = PPUMode::VBlank;
+                    self.mode.stat_interrupt(mem);
                     self.frame_flag = true;
-                    mem.io[STAT] = alu::set_bit(mem.io[STAT], 0, true);
-                    mem.io[STAT] = alu::set_bit(mem.io[STAT], 1, false);
-                    mem.io[0x0F] = alu::set_bit(mem.io[0x0F], 0, true);
+                    mem.io[IF] = alu::set_bit(mem.io[IF], 0, true);
                     mem.io[LY] += 1;
                 } else if mem.io[LY] == 153 {
                     mem.io[LY] = 0;
