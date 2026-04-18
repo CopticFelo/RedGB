@@ -54,6 +54,9 @@ impl Fetcher {
         let is_window = *draw_layer == DrawLayer::Window;
         let tile_addr: u16 = {
             if is_window && (self.lx as isize - wx) >= 0 {
+                if ly < wy {
+                    return Ok(0);
+                }
                 let base = 0x9800;
                 let tile_map = (alu::read_bits(lcdc, 6, 1) as u16) << 10;
                 let tile_map_y = ((ly - wy) as u16 >> 3) << 5;
@@ -86,6 +89,9 @@ impl Fetcher {
         };
         let is_window = *draw_layer == DrawLayer::Window;
         let tile_row = if is_window {
+            if ly < wy as usize {
+                return Ok(0);
+            }
             (ly - wy as usize) & 7
         } else {
             (ly + scy) & 7
