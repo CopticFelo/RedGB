@@ -150,28 +150,29 @@ impl PPU {
                 self.current_oam = PPU::fetch_from_oam(mem).ok();
                 self.discard_counter = mem.io[SCX] & 7;
                 self.mode = PPUMode::Draw(DrawLayer::Bg);
-                // 80-4 = 76
-                self.cycle_deficit += 76;
+                // NOTE: You need another 4 cycles here (so 80+4) cuz the gb wastes 4 cycles
+                // fetching the first tile twice or something
+                self.cycle_deficit += 84;
             }
             PPUMode::Draw(_) => {
                 self.mode.stat_interrupt(mem);
-                if self.bg_fifo.is_empty() {
-                    for _ in 0..2 {
-                        let _ = match self.fetcher.phase {
-                            0 => self.fetcher.fetch_bg_tile(mem, self.lx),
-                            1 | 2 => self.fetcher.fetch_tile_data(mem, self.lx),
-                            3 => {
-                                self.fetcher.push_to_fifo(mem, &mut self.bg_fifo);
-                                Ok(0)
-                            }
-                            _ => Ok(0),
-                        };
-                    }
-                } else {
+                self.fetcher.push_to_fifo(mem, &mut self.bg_fifo);
+                for _ in 0..2 {
+                    let _ = match self.fetcher.phase {
+                        0 => self.fetcher.fetch_bg_tile(mem),
+                        1 | 2 => self.fetcher.fetch_tile_data(mem),
+                        _ => Ok(0),
+                    };
+                }
+                if !self.bg_fifo.is_empty() {
                     self.fifo_pop(mem);
                 }
                 if self.lx > 159 {
                     self.mode = PPUMode::HBlank;
+                    self.bg_fifo.clear();
+                    self.fetcher.phase = 0;
+                    self.lx = 0;
+                    self.fetcher.lx = 0;
                 }
             }
             PPUMode::HBlank => {
@@ -184,7 +185,6 @@ impl PPU {
                 } else {
                     self.mode = PPUMode::Scan;
                 }
-                self.lx = 0;
                 self.bg_fifo.clear();
                 trace!("LY: {}", mem.io[LY]);
                 trace!("Framebuffer: {:#?}", &self.framebuffer[0..20]);
@@ -223,6 +223,8 @@ impl PPU {
             {
                 self.mode = PPUMode::Draw(DrawLayer::Window);
                 self.bg_fifo.clear();
+                self.fetcher.lx = self.lx;
+                self.fetcher.phase = 0;
                 break;
             } else if !is_window {
                 self.mode = PPUMode::Draw(DrawLayer::Bg);

@@ -24,6 +24,7 @@ pub struct Fetcher {
     tile_x_step: u8,
     tile_y_step: u8,
     pub phase: u8,
+    pub lx: u8,
     tile_hi: u8,
     tile_lo: u8,
 }
@@ -37,12 +38,13 @@ impl Default for Fetcher {
             phase: 0,
             tile_hi: 0,
             tile_lo: 0,
+            lx: 0,
         }
     }
 }
 
 impl Fetcher {
-    pub fn fetch_bg_tile(&mut self, mem: &Memory, lx: u8) -> Result<u8, GBError> {
+    pub fn fetch_bg_tile(&mut self, mem: &Memory) -> Result<u8, GBError> {
         let scy = mem.io[SCY];
         let scx = mem.io[SCX];
         let wy = mem.io[WY];
@@ -50,20 +52,20 @@ impl Fetcher {
         let ly = mem.io[LY];
         let lcdc = mem.io[LCDC];
         let is_window = alu::read_bits(lcdc, 5, 1) == 1
-            && (wx..(wx + 160)).contains(&(lx as isize))
+            && (wx..(wx + 160)).contains(&(self.lx as isize))
             && wy <= ly;
         let tile_addr: u16 = {
-            if is_window && (lx as isize - wx) >= 0 {
+            if is_window && (self.lx as isize - wx) >= 0 {
                 let base = 0x9800;
                 let tile_map = (alu::read_bits(lcdc, 6, 1) as u16) << 10;
                 let tile_map_y = ((ly - wy) as u16 >> 3) << 5;
-                let tile_map_x = (lx as isize - wx) as u16 >> 3;
+                let tile_map_x = (self.lx as isize - wx) as u16 >> 3;
                 base | tile_map | tile_map_y | tile_map_x
             } else {
                 let base = 0x9800;
                 let tile_map = (alu::read_bits(lcdc, 3, 1) as u16) << 10;
                 let tile_map_y = (((ly as u16 + scy as u16) / 8) & 31) << 5;
-                let tile_map_x = ((lx as u16 + scx as u16) / 8) & 31;
+                let tile_map_x = ((self.lx as u16 + scx as u16) / 8) & 31;
                 base | tile_map | tile_map_y | tile_map_x
             }
         };
@@ -74,7 +76,7 @@ impl Fetcher {
         self.phase = (self.phase + 1) & 3;
         Ok(2)
     }
-    pub fn fetch_tile_data(&mut self, mem: &Memory, lx: u8) -> Result<u8, GBError> {
+    pub fn fetch_tile_data(&mut self, mem: &Memory) -> Result<u8, GBError> {
         let scy = mem.io[SCY] as usize;
         let ly = mem.io[LY] as usize;
         let lcdc = mem.io[LCDC];
@@ -86,7 +88,7 @@ impl Fetcher {
             0x9000
         };
         let is_window = alu::read_bits(lcdc, 5, 1) == 1
-            && (wx..wx + 160).contains(&(lx as isize))
+            && (wx..wx + 160).contains(&(self.lx as isize))
             && wy as usize <= ly;
         let tile_row = if is_window {
             (ly - wy as usize) & 7
@@ -107,10 +109,7 @@ impl Fetcher {
         Ok(2)
     }
     pub fn push_to_fifo(&mut self, mem: &Memory, fifo: &mut VecDeque<Pixel>) {
-        if self.current_tile_id == 142 {
-            print!("");
-        }
-        if !fifo.is_empty() {
+        if !fifo.is_empty() || self.phase != 3 {
             return;
         }
         for i in (0..8).rev() {
@@ -125,6 +124,7 @@ impl Fetcher {
                 cgb_priority: None,
                 bg_priority: None,
             });
+            self.lx = self.lx.saturating_add(1);
         }
         self.phase = (self.phase + 1) & 3;
     }
