@@ -24,14 +24,14 @@ const SCX: usize = 0x43;
 const WY: usize = 0x4A;
 const WX: usize = 0x4B;
 
-#[derive(PartialEq)]
-enum DrawLayer {
+#[derive(PartialEq, Clone, Copy)]
+pub enum DrawLayer {
     Bg,
     Obj,
     Window,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 enum PPUMode {
     HBlank,
     VBlank,
@@ -154,13 +154,13 @@ impl PPU {
                 // fetching the first tile twice or something
                 self.cycle_deficit += 84;
             }
-            PPUMode::Draw(_) => {
+            PPUMode::Draw(draw_layer) => {
                 self.mode.stat_interrupt(mem);
                 self.fetcher.push_to_fifo(mem, &mut self.bg_fifo);
                 for _ in 0..2 {
                     let _ = match self.fetcher.phase {
-                        0 => self.fetcher.fetch_bg_tile(mem),
-                        1 | 2 => self.fetcher.fetch_tile_data(mem),
+                        0 => self.fetcher.fetch_bg_tile(mem, &draw_layer),
+                        1 | 2 => self.fetcher.fetch_tile_data(mem, &draw_layer),
                         _ => Ok(0),
                     };
                 }
