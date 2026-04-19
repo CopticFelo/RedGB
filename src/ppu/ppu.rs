@@ -224,6 +224,9 @@ impl PPU {
                 self.mode = PPUMode::Draw(DrawLayer::Bg);
             }
             let pixel = self.bg_fifo.pop_front().unwrap();
+            if self.mode == PPUMode::Draw(DrawLayer::Window) {
+                self.discard_counter = 0;
+            }
             if self.discard_counter == 0 {
                 let framebuffer_index = ((mem.io[LY] as usize * 160) + self.lx as usize) * 3;
                 self.framebuffer[framebuffer_index..framebuffer_index + 3]
