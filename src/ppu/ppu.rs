@@ -202,25 +202,41 @@ impl PPU {
             }
         }
     }
+    fn determine_layer(&self, mem: &Memory) -> (DrawLayer, bool) {
+        if let Some(obj_list) = self.current_oam {
+            for obj in obj_list {
+                if let Some(sprite) = obj
+                    && ((self.lx as u16 as i16)..(self.lx as u16 as i16) + 8).contains(&sprite.x)
+                {
+                    return (DrawLayer::Obj, self.mode != PPUMode::Draw(DrawLayer::Obj));
+                }
+            }
+        }
+        let wy = mem.io[WY];
+        let wx = mem.io[WX] as isize - 7;
+        let lcdc = mem.io[LCDC];
+        let is_window = alu::read_bits(lcdc, 5, 1) == 1
+            && (wx..(wx + 160)).contains(&(self.lx as isize))
+            && wy <= mem.io[LY];
+        if is_window {
+            (
+                DrawLayer::Window,
+                self.mode != PPUMode::Draw(DrawLayer::Window),
+            )
+        } else {
+            (DrawLayer::Bg, self.mode != PPUMode::Draw(DrawLayer::Bg))
+        }
+    }
     fn fifo_pop(&mut self, mem: &Memory) {
         for _ in 0..4 {
-            let wy = mem.io[WY];
-            let wx = mem.io[WX] as isize - 7;
-            let lcdc = mem.io[LCDC];
-            // TODO: This is disgusting, clean up later please
-            let is_window = alu::read_bits(lcdc, 5, 1) == 1
-                && (wx..(wx + 160)).contains(&(self.lx as isize))
-                && wy <= mem.io[LY];
-            if is_window
-                && let PPUMode::Draw(layer) = &self.mode
-                && *layer != DrawLayer::Window
-            {
+            let layer_query = self.determine_layer(mem);
+            if layer_query.0 == DrawLayer::Window && layer_query.1 {
                 self.mode = PPUMode::Draw(DrawLayer::Window);
                 self.bg_fifo.clear();
                 self.fetcher.lx = self.lx;
                 self.fetcher.phase = 0;
                 break;
-            } else if !is_window {
+            } else if layer_query.0 == DrawLayer::Bg {
                 self.mode = PPUMode::Draw(DrawLayer::Bg);
             }
             let pixel = self.bg_fifo.pop_front().unwrap();
