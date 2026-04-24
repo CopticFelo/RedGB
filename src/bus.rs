@@ -24,7 +24,6 @@ pub struct Bus {
     pub serial_message: Vec<u8>,
     pub joypad: Joypad,
     pub apu: APU,
-    serial_clock: u16,
 }
 
 impl Bus {
@@ -43,7 +42,6 @@ impl Bus {
             serial_message: vec![],
             joypad: Joypad::default(),
             apu: APU::new(buffer),
-            serial_clock: 0,
         }
     }
     pub fn fetch(&mut self) -> u8 {
@@ -69,15 +67,12 @@ impl Bus {
             mbc3.rtc.tick(&self.t_cycles);
         }
 
-        if alu::read_bits(self.memory.io[SC], 7, 1) == 1 {
-            self.serial_clock += 4;
-            if self.serial_clock.is_multiple_of(512) {
-                self.memory.io[SB] <<= 1;
-            }
-            if self.serial_clock == 4096 {
-                self.memory.io[0xF] = alu::set_bit(self.memory.io[0xF], 3, true);
-                self.serial_clock = 0;
-            }
+        if alu::read_bits(self.memory.io[SC], 7, 1) == 1
+            && alu::read_bits(self.memory.io[SC], 0, 1) == 1
+        {
+            self.memory.io[SB] = 0xFF;
+            self.memory.io[SC] = alu::set_bit(self.memory.io[SC], 7, false);
+            self.memory.io[0xF] = alu::set_bit(self.memory.io[0xF], 3, true);
         }
     }
     pub fn read(&mut self, addr: u16) -> Result<u8, GBError> {
