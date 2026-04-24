@@ -82,7 +82,7 @@ pub struct PPU {
     lx: u8,
     pub framebuffer: Vec<u8>,
     pub frame_flag: bool,
-    current_oam: Option<[Option<GBSprite>; 10]>,
+    current_oam: VecDeque<GBSprite>,
     bg_fifo: VecDeque<Pixel>,
     oam_fifo: VecDeque<Pixel>,
     fetcher: Fetcher,
@@ -98,7 +98,7 @@ impl Default for PPU {
             last_cycle: 0,
             lx: 0,
             framebuffer: vec![0x0; 160 * 144 * 3],
-            current_oam: None,
+            current_oam: VecDeque::with_capacity(10),
             bg_fifo: VecDeque::with_capacity(8),
             oam_fifo: VecDeque::with_capacity(8),
             fetcher: Fetcher::default(),
@@ -156,7 +156,7 @@ impl PPU {
             PPUMode::Scan => {
                 self.mode.stat_interrupt(mem);
                 self.last_cycle = *t_cycles;
-                self.current_oam = PPU::fetch_from_oam(mem).ok();
+                self.current_oam.extend(PPU::fetch_from_oam(mem).unwrap());
                 self.discard_counter = mem.io[SCX] & 7;
                 self.mode = PPUMode::Draw(DrawLayer::Bg);
                 // NOTE: You need another 4 cycles here (so 80+4) cuz the gb wastes 4 cycles
@@ -182,6 +182,8 @@ impl PPU {
                 if self.lx > 159 {
                     self.mode = PPUMode::HBlank;
                     self.bg_fifo.clear();
+                    self.oam_fifo.clear();
+                    self.current_oam.clear();
                     self.fetcher.phase = 0;
                     self.lx = 0;
                     self.fetcher.lx = 0;
@@ -214,18 +216,17 @@ impl PPU {
             }
         }
     }
-    fn determine_layer(&self, mem: &Memory) -> (DrawLayer, bool) {
-        if let Some(obj_list) = self.current_oam {
-            for obj in obj_list {
-                if let Some(sprite) = obj
-                    && (sprite.x..sprite.x + 8).contains(&(self.lx as u16 as i16))
-                {
-                    return (
-                        DrawLayer::Obj(sprite),
-                        self.mode != PPUMode::Draw(DrawLayer::Obj(sprite)),
-                    );
-                }
-            }
+    fn determine_layer(&mut self, mem: &Memory) -> (DrawLayer, bool) {
+        if self
+            .current_oam
+            .front()
+            .is_some_and(|obj| (obj.x..obj.x + 8).contains(&(self.lx as u16 as i16)))
+        {
+            let obj = self.current_oam.pop_front().unwrap();
+            return (
+                DrawLayer::Obj(obj),
+                self.mode != PPUMode::Draw(DrawLayer::Obj(obj)),
+            );
         }
         let wy = mem.io[WY];
         let wx = mem.io[WX] as isize - 7;
@@ -234,15 +235,15 @@ impl PPU {
             && (wx..(wx + 160)).contains(&(self.lx as isize))
             && wy <= mem.io[LY];
         if is_window {
-            (
-                DrawLayer::Window,
-                self.mode != PPUMode::Draw(DrawLayer::Window),
-            )
+            (DrawLayer::Window, self.mode == PPUMode::Draw(DrawLayer::Bg))
         } else {
             (DrawLayer::Bg, self.mode != PPUMode::Draw(DrawLayer::Bg))
         }
     }
     fn fifo_pop(&mut self, mem: &Memory) {
+        if self.fetcher.current_sprite.is_some() {
+            return;
+        }
         for _ in 0..4 {
             if self.bg_fifo.is_empty() {
                 return;
@@ -256,6 +257,9 @@ impl PPU {
                     self.fetcher.phase = 0;
                     break;
                 }
+                (DrawLayer::Window, false) => {
+                    self.mode = PPUMode::Draw(DrawLayer::Window);
+                }
                 (DrawLayer::Bg, true) => {
                     self.mode = PPUMode::Draw(DrawLayer::Bg);
                 }
@@ -263,11 +267,6 @@ impl PPU {
                     self.fetcher.switch_to_sprite(sprite);
                     self.mode = PPUMode::Draw(layer_query.0);
                     return;
-                }
-                (DrawLayer::Obj(_), false) => {
-                    if self.fetcher.current_sprite.is_some() {
-                        return;
-                    }
                 }
                 _ => (),
             }
@@ -289,8 +288,8 @@ impl PPU {
             }
         }
     }
-    fn fetch_from_oam(mem: &Memory) -> Result<[Option<GBSprite>; 10], GBError> {
-        let mut sprite_table = [None; 10];
+    fn fetch_from_oam(mem: &Memory) -> Result<Vec<GBSprite>, GBError> {
+        let mut sprite_table: Vec<GBSprite> = Vec::new();
         let ly = mem.io[LY];
         let mut index = 0;
         for obj_addr in (0xFE00..0xFEA0).step_by(4) {
@@ -303,8 +302,11 @@ impl PPU {
             } else {
                 7
             };
-            if ((ly as isize - obj_size)..=ly as isize).contains(&(y as isize)) && index < 10 {
-                sprite_table[index] = Some(GBSprite {
+            if ((ly as isize - obj_size)..=ly as isize).contains(&(y as isize))
+                && index < 10
+                && (-7..168).contains(&x)
+            {
+                sprite_table.push(GBSprite {
                     x,
                     y,
                     tile_index,
@@ -318,17 +320,7 @@ impl PPU {
                 index += 1;
             }
         }
-        sprite_table.sort_by(|sprite_a, sprite_b| {
-            if sprite_a.is_none() {
-                Ordering::Greater
-            } else if sprite_b.is_none() {
-                Ordering::Less
-            } else {
-                let obj_a = sprite_a.unwrap();
-                let obj_b = sprite_b.unwrap();
-                obj_a.x.cmp(&obj_b.x)
-            }
-        });
+        sprite_table.sort_by(|sprite_a, sprite_b| sprite_a.x.cmp(&sprite_b.x));
         Ok(sprite_table)
     }
 }
