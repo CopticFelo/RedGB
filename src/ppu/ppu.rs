@@ -1,5 +1,6 @@
 extern crate sdl3;
 
+use std::cmp::{self, Ordering};
 use std::collections::VecDeque;
 
 use log::trace;
@@ -16,10 +17,6 @@ const LCDC: usize = 0x40;
 const STAT: usize = 0x41;
 const LY: usize = 0x44;
 const LYC: usize = 0x45;
-const BGP: usize = 0x47;
-const OBP0: usize = 0x48;
-const OBP1: usize = 0x49;
-const SCY: usize = 0x42;
 const SCX: usize = 0x43;
 const WY: usize = 0x4A;
 const WX: usize = 0x4B;
@@ -27,7 +24,7 @@ const WX: usize = 0x4B;
 #[derive(PartialEq, Clone, Copy)]
 pub enum DrawLayer {
     Bg,
-    Obj,
+    Obj(GBSprite),
     Window,
 }
 
@@ -87,6 +84,7 @@ pub struct PPU {
     pub frame_flag: bool,
     current_oam: Option<[Option<GBSprite>; 10]>,
     bg_fifo: VecDeque<Pixel>,
+    oam_fifo: VecDeque<Pixel>,
     fetcher: Fetcher,
     discard_counter: u8,
     cycle_deficit: u64,
@@ -102,6 +100,7 @@ impl Default for PPU {
             framebuffer: vec![0x0; 160 * 144 * 3],
             current_oam: None,
             bg_fifo: VecDeque::with_capacity(8),
+            oam_fifo: VecDeque::with_capacity(8),
             fetcher: Fetcher::default(),
             discard_counter: 0,
             cycle_deficit: 0,
@@ -121,15 +120,24 @@ impl PPU {
             mem.io[STAT] = alu::set_bit(mem.io[STAT], 2, false);
         }
     }
-    fn colorise(pixel: &Pixel) -> [u8; 3] {
-        let palette = pixel.palette;
+    fn colorise(bg_pixel: &Pixel, obj_pixel: &Option<Pixel>) -> [u8; 3] {
+        let visible_pixel = if let Some(sprite_pixel) = obj_pixel
+            && sprite_pixel.color_id != 0
+            && ((sprite_pixel.obj_priority == Some(1) && bg_pixel.color_id == 0)
+                || sprite_pixel.obj_priority == Some(0))
+        {
+            sprite_pixel
+        } else {
+            bg_pixel
+        };
+        let palette = visible_pixel.palette;
         let ids = [
             alu::read_bits(palette, 0, 2),
             alu::read_bits(palette, 2, 2),
             alu::read_bits(palette, 4, 2),
             alu::read_bits(palette, 6, 2),
         ];
-        match ids[pixel.color_id as usize] {
+        match ids[visible_pixel.color_id as usize] {
             0 => [0xFF, 0xFF, 0xFF],
             1 => [0xD3, 0xD3, 0xD3],
             2 => [0x69, 0x69, 0x69],
@@ -156,13 +164,17 @@ impl PPU {
                 self.cycle_deficit += 84;
             }
             PPUMode::Draw(draw_layer) => {
-                self.fetcher.push_to_fifo(mem, &mut self.bg_fifo);
                 for _ in 0..2 {
                     let _ = match self.fetcher.phase {
                         0 => self.fetcher.fetch_bg_tile(mem, &draw_layer),
                         1 | 2 => self.fetcher.fetch_tile_data(mem, &draw_layer),
                         _ => Ok(0),
                     };
+                }
+                if self.fetcher.current_sprite.is_some() {
+                    self.fetcher.push_to_fifo(mem, &mut self.oam_fifo);
+                } else {
+                    self.fetcher.push_to_fifo(mem, &mut self.bg_fifo);
                 }
                 if !self.bg_fifo.is_empty() {
                     self.fifo_pop(mem);
@@ -206,9 +218,12 @@ impl PPU {
         if let Some(obj_list) = self.current_oam {
             for obj in obj_list {
                 if let Some(sprite) = obj
-                    && ((self.lx as u16 as i16)..(self.lx as u16 as i16) + 8).contains(&sprite.x)
+                    && (sprite.x..sprite.x + 8).contains(&(self.lx as u16 as i16))
                 {
-                    return (DrawLayer::Obj, self.mode != PPUMode::Draw(DrawLayer::Obj));
+                    return (
+                        DrawLayer::Obj(sprite),
+                        self.mode != PPUMode::Draw(DrawLayer::Obj(sprite)),
+                    );
                 }
             }
         }
@@ -229,24 +244,42 @@ impl PPU {
     }
     fn fifo_pop(&mut self, mem: &Memory) {
         for _ in 0..4 {
-            let layer_query = self.determine_layer(mem);
-            if layer_query.0 == DrawLayer::Window && layer_query.1 {
-                self.mode = PPUMode::Draw(DrawLayer::Window);
-                self.bg_fifo.clear();
-                self.fetcher.lx = self.lx;
-                self.fetcher.phase = 0;
-                break;
-            } else if layer_query.0 == DrawLayer::Bg {
-                self.mode = PPUMode::Draw(DrawLayer::Bg);
+            if self.bg_fifo.is_empty() {
+                return;
             }
-            let pixel = self.bg_fifo.pop_front().unwrap();
+            let layer_query = self.determine_layer(mem);
+            match layer_query {
+                (DrawLayer::Window, true) => {
+                    self.mode = PPUMode::Draw(DrawLayer::Window);
+                    self.bg_fifo.clear();
+                    self.fetcher.lx = self.lx;
+                    self.fetcher.phase = 0;
+                    break;
+                }
+                (DrawLayer::Bg, true) => {
+                    self.mode = PPUMode::Draw(DrawLayer::Bg);
+                }
+                (DrawLayer::Obj(sprite), true) => {
+                    self.fetcher.switch_to_sprite(sprite);
+                    self.mode = PPUMode::Draw(layer_query.0);
+                    return;
+                }
+                (DrawLayer::Obj(_), false) => {
+                    if self.fetcher.current_sprite.is_some() {
+                        return;
+                    }
+                }
+                _ => (),
+            }
+            let bg_pixel = self.bg_fifo.pop_front().unwrap();
+            let obj_pixel = self.oam_fifo.pop_front();
             if self.mode == PPUMode::Draw(DrawLayer::Window) {
                 self.discard_counter = 0;
             }
             if self.discard_counter == 0 {
                 let framebuffer_index = ((mem.io[LY] as usize * 160) + self.lx as usize) * 3;
                 self.framebuffer[framebuffer_index..framebuffer_index + 3]
-                    .copy_from_slice(&PPU::colorise(&pixel));
+                    .copy_from_slice(&PPU::colorise(&bg_pixel, &obj_pixel));
                 self.lx += 1;
                 if self.lx == 160 {
                     break;
@@ -285,6 +318,17 @@ impl PPU {
                 index += 1;
             }
         }
+        sprite_table.sort_by(|sprite_a, sprite_b| {
+            if sprite_a.is_none() {
+                Ordering::Greater
+            } else if sprite_b.is_none() {
+                Ordering::Less
+            } else {
+                let obj_a = sprite_a.unwrap();
+                let obj_b = sprite_b.unwrap();
+                obj_a.x.cmp(&obj_b.x)
+            }
+        });
         Ok(sprite_table)
     }
 }
