@@ -4,7 +4,7 @@ use crate::{
     cpu::alu,
     error::GBError,
     mem::map::Memory,
-    ppu::{ppu::DrawLayer, sprite::GBSprite},
+    ppu::{ppumode::DrawLayer, sprite::GBSprite},
 };
 
 const LCDC: usize = 0x40;
