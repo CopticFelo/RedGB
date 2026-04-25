@@ -136,6 +136,12 @@ impl PPU {
                 }
             }
             PPUMode::HBlank => {
+                if alu::read_bits(mem.io[LCDC], 5, 1) == 1
+                    && mem.io[LY] >= mem.io[WY]
+                    && (0..167).contains(&mem.io[WX])
+                {
+                    self.fetcher.window_ly += 1;
+                }
                 self.mode.stat_interrupt(mem);
                 let draw_len = delta - 80;
                 self.cycle_deficit += 456 - draw_len;
@@ -150,6 +156,7 @@ impl PPU {
                 trace!("Framebuffer: {:#?}", &self.framebuffer[0..20]);
             }
             PPUMode::VBlank => {
+                self.fetcher.window_ly = 0;
                 if mem.io[LY] == 144 {
                     self.frame_flag = true;
                     self.mode.stat_interrupt(mem);

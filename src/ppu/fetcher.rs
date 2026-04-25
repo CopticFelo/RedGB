@@ -31,6 +31,7 @@ pub struct Fetcher {
     tile_y_step: u8,
     pub phase: u8,
     pub lx: u8,
+    pub window_ly: u16,
     tile_hi: u8,
     tile_lo: u8,
     pub current_sprite: Option<GBSprite>,
@@ -46,6 +47,7 @@ impl Default for Fetcher {
             tile_hi: 0,
             tile_lo: 0,
             lx: 0,
+            window_ly: 0,
             current_sprite: None,
         }
     }
@@ -56,19 +58,19 @@ impl Fetcher {
         let scy = mem.io[SCY];
         let scx = mem.io[SCX];
         let wy = mem.io[WY];
-        let wx = mem.io[WX] as isize - 7;
+        let wx = mem.io[WX].saturating_sub(7);
         let ly = mem.io[LY];
         let lcdc = mem.io[LCDC];
         let is_window = *draw_layer == DrawLayer::Window;
         let tile_addr: u16 = {
-            if is_window && (self.lx as isize - wx) >= 0 {
+            if is_window {
                 if ly < wy {
                     return Ok(0);
                 }
                 let base = 0x9800;
                 let tile_map = (alu::read_bits(lcdc, 6, 1) as u16) << 10;
-                let tile_map_y = ((ly - wy) as u16 >> 3) << 5;
-                let tile_map_x = (self.lx as isize - wx) as u16 >> 3;
+                let tile_map_y = (self.window_ly >> 3) << 5;
+                let tile_map_x = (self.lx - wx) as u16 >> 3;
                 base | tile_map | tile_map_y | tile_map_x
             } else {
                 let base = 0x9800;
