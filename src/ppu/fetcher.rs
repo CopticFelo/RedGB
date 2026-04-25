@@ -140,7 +140,7 @@ impl Fetcher {
         self.phase = (self.phase + 1) & 3;
         Ok(2)
     }
-    pub fn push_to_fifo(&mut self, mem: &Memory, fifo: &mut VecDeque<Pixel>) {
+    pub fn push_to_fifo(&mut self, mem: &Memory, fifo: &mut VecDeque<Pixel>, fifo_lx: u8) {
         if (!fifo.is_empty() && self.current_sprite.is_none()) || self.phase != 3 {
             return;
         }
@@ -160,10 +160,11 @@ impl Fetcher {
             };
 
             if let Some(sprite) = self.current_sprite {
-                if fifo
+                if (fifo
                     .get(7 - i as usize)
                     .is_some_and(|pixel| pixel.color_id != 0)
-                    && color_id == 0
+                    && color_id == 0)
+                    || ((sprite.x + fifo_lx as i16 + (7 - i as i16)) < 0)
                 {
                     continue;
                 }

@@ -118,9 +118,9 @@ impl PPU {
                     };
                 }
                 if self.fetcher.current_sprite.is_some() {
-                    self.fetcher.push_to_fifo(mem, &mut self.oam_fifo);
+                    self.fetcher.push_to_fifo(mem, &mut self.oam_fifo, self.lx);
                 } else {
-                    self.fetcher.push_to_fifo(mem, &mut self.bg_fifo);
+                    self.fetcher.push_to_fifo(mem, &mut self.bg_fifo, self.lx);
                 }
                 if !self.bg_fifo.is_empty() {
                     self.fifo_pop(mem);
@@ -173,7 +173,7 @@ impl PPU {
         if self
             .current_oam
             .front()
-            .is_some_and(|obj| (obj.x..obj.x + 8).contains(&(self.lx as u16 as i16)))
+            .is_some_and(|obj| (obj.x..obj.x + 8).contains(&(self.lx as i16)))
         {
             let obj = self.current_oam.pop_front().unwrap();
             return (
