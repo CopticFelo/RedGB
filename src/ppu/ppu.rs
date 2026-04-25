@@ -230,8 +230,15 @@ impl PPU {
             }
             if self.discard_counter == 0 {
                 let framebuffer_index = ((mem.io[LY] as usize * 160) + self.lx as usize) * 3;
-                self.framebuffer[framebuffer_index..framebuffer_index + 3]
-                    .copy_from_slice(&PPU::colorise(&bg_pixel, &obj_pixel));
+                if alu::read_bits(mem.io[LCDC], 0, 1) == 0
+                    && self.mode == PPUMode::Draw(DrawLayer::Bg)
+                {
+                    self.framebuffer[framebuffer_index..framebuffer_index + 3]
+                        .copy_from_slice(&[0xFF, 0xFF, 0xFF]);
+                } else {
+                    self.framebuffer[framebuffer_index..framebuffer_index + 3]
+                        .copy_from_slice(&PPU::colorise(&bg_pixel, &obj_pixel));
+                }
                 self.lx += 1;
                 if self.lx == 160 {
                     break;
