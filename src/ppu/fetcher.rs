@@ -160,7 +160,8 @@ impl Fetcher {
             if let Some(sprite) = self.current_sprite {
                 if fifo
                     .get(7 - i as usize)
-                    .is_some_and(|pixel| pixel.color_id == 0)
+                    .is_some_and(|pixel| pixel.color_id != 0)
+                    && color_id == 0
                 {
                     continue;
                 }
