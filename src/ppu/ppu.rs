@@ -217,9 +217,11 @@ impl PPU {
                     self.mode = PPUMode::Draw(DrawLayer::Bg);
                 }
                 (DrawLayer::Obj(sprite), true) => {
-                    self.fetcher.switch_to_sprite(sprite);
-                    self.mode = PPUMode::Draw(layer_query.0);
-                    return;
+                    if alu::read_bits(mem.io[LCDC], 1, 1) == 1 {
+                        self.fetcher.switch_to_sprite(sprite);
+                        self.mode = PPUMode::Draw(layer_query.0);
+                        return;
+                    }
                 }
                 _ => (),
             }
