@@ -248,9 +248,10 @@ impl PPU {
         for obj_addr in (0xFE00..0xFEA0).step_by(4) {
             let y = (mem.dma_read(obj_addr)? as u16 as i16) - 16;
             let x = (mem.dma_read(obj_addr + 1)? as u16 as i16) - 8;
-            let tile_index = mem.dma_read(obj_addr + 2)?;
+            let mut tile_index = mem.dma_read(obj_addr + 2)?;
             let attributes = mem.dma_read(obj_addr + 3)?;
             let obj_size = if alu::read_bits(mem.io[LCDC], 2, 1) == 1 {
+                tile_index &= 0xFE;
                 15
             } else {
                 7
