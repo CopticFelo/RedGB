@@ -146,8 +146,7 @@ impl PPU {
                     self.fetcher.window_ly += 1;
                 }
                 self.mode.stat_interrupt(mem);
-                let draw_len = delta - 80;
-                self.cycle_deficit += 456 - draw_len;
+                self.cycle_deficit += 456_u64.saturating_sub(delta);
                 PPU::inc_ly(mem);
                 if mem.io[LY] == 144 {
                     self.mode = PPUMode::VBlank;
