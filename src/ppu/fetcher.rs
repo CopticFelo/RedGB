@@ -17,6 +17,7 @@ const SCX: usize = 0x43;
 const WY: usize = 0x4A;
 const WX: usize = 0x4B;
 
+#[derive(Clone, Copy)]
 pub struct Pixel {
     pub color_id: u8,
     pub palette: u8,
@@ -123,7 +124,7 @@ impl Fetcher {
             if ly < wy as usize {
                 return Ok(0);
             }
-            (ly - wy as usize) & 7
+            self.window_ly as usize & 7
         } else {
             (ly + scy) & 7
         };
