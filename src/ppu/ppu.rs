@@ -26,6 +26,7 @@ pub struct PPU {
     last_cycle: u64,
     mode: PPUMode,
     lx: u8,
+    window_start_flag: bool,
     pub framebuffer: Vec<u8>,
     pub frame_flag: bool,
     current_oam: VecDeque<GBSprite>,
@@ -43,6 +44,7 @@ impl Default for PPU {
             mode: PPUMode::Scan,
             last_cycle: 0,
             lx: 0,
+            window_start_flag: false,
             framebuffer: vec![0x0; 160 * 144 * 3],
             current_oam: VecDeque::with_capacity(10),
             bg_fifo: VecDeque::with_capacity(8),
@@ -132,6 +134,7 @@ impl PPU {
                     self.current_oam.clear();
                     self.fetcher.phase = 0;
                     self.lx = 0;
+                    self.window_start_flag = false;
                     self.fetcher.lx = 0;
                 }
             }
@@ -188,7 +191,7 @@ impl PPU {
             && (wx..(wx + 160)).contains(&(self.lx as isize))
             && wy <= mem.io[LY];
         if is_window {
-            (DrawLayer::Window, self.mode == PPUMode::Draw(DrawLayer::Bg))
+            (DrawLayer::Window, !self.window_start_flag)
         } else {
             (DrawLayer::Bg, self.mode != PPUMode::Draw(DrawLayer::Bg))
         }
@@ -198,9 +201,6 @@ impl PPU {
             return;
         }
         for _ in 0..4 {
-            if self.bg_fifo.is_empty() {
-                return;
-            }
             let layer_query = self.determine_layer(mem);
             match layer_query {
                 (DrawLayer::Window, true) => {
@@ -208,6 +208,7 @@ impl PPU {
                     self.bg_fifo.clear();
                     self.fetcher.lx = self.lx;
                     self.fetcher.phase = 0;
+                    self.window_start_flag = true;
                     break;
                 }
                 (DrawLayer::Window, false) => {
@@ -224,6 +225,9 @@ impl PPU {
                     }
                 }
                 _ => (),
+            }
+            if self.bg_fifo.is_empty() {
+                return;
             }
             let bg_pixel = self.bg_fifo.pop_front().unwrap();
             let obj_pixel = self.oam_fifo.pop_front();
