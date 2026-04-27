@@ -96,7 +96,7 @@ impl Mbc for MBC1 {
             }
             0x2000..0x4000 => {
                 self.bank_1 = alu::read_bits(value, 0, 5);
-                if [0, 0x20, 0x40, 0x60].contains(&value) {
+                if [0, 0x20, 0x40, 0x60].contains(&self.bank_1) {
                     self.bank_1 += 1
                 }
             }
