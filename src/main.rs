@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use redgb::emulator;
 use redgb::rom::{rom_info, rom_parser};
 use rfd::FileDialog;
