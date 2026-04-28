@@ -124,9 +124,8 @@ impl PPU {
                 } else {
                     self.fetcher.push_to_fifo(mem, &mut self.bg_fifo, self.lx);
                 }
-                if !self.bg_fifo.is_empty() {
-                    self.fifo_pop(mem);
-                }
+                self.fifo_pop(mem);
+
                 if self.lx > 159 {
                     self.mode = PPUMode::HBlank;
                     self.bg_fifo.clear();
