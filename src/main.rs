@@ -6,6 +6,13 @@ use std::path::PathBuf;
 use std::{env, fs, io, io::Write};
 
 fn main() {
+    if cfg!(target_os = "windows") {
+        let mut res = winres::WindowsResource::new();
+        res.set_icon("assets/icon.ico")
+            .set("InternalName", "REDGB.EXE")
+            .set_version_info(winres::VersionInfo::PRODUCTVERSION, 0x0001000000000000);
+        res.compile().unwrap();
+    }
     env_logger::init();
     let args: Vec<String> = env::args().collect();
     let mut rom_path: String = String::new();
