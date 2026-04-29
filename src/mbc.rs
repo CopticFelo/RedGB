@@ -2,8 +2,8 @@ pub mod mbc1;
 pub mod mbc2;
 pub mod mbc3;
 
-use std::any::Any;
 use std::fmt::Debug;
+use std::{any::Any, path::PathBuf};
 
 use crate::{error::GBError, rom::rom_info::ROMInfo};
 
@@ -19,4 +19,15 @@ pub trait MbcFactory {
     fn new(rom: Vec<u8>, header: ROMInfo) -> Self
     where
         Self: Sized;
+}
+
+pub fn save_path(rom_header: &ROMInfo) -> PathBuf {
+    let filename = format!("{}.sav", rom_header.title.trim_end_matches('\0'));
+
+    let dir = dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("com.copticfelo.redgb");
+
+    std::fs::create_dir_all(&dir).ok();
+    dir.join(filename)
 }

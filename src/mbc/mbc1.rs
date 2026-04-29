@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{cpu::alu, error::GBError, rom::rom_info::ROMInfo};
+use crate::{cpu::alu, error::GBError, mbc, rom::rom_info::ROMInfo};
 
 use super::{Mbc, MbcFactory};
 #[derive(Debug)]
@@ -22,10 +22,7 @@ impl Mbc for MBC1 {
         self
     }
     fn load(&mut self) -> Result<(), GBError> {
-        let data = match std::fs::read(format!(
-            "{}.sav",
-            self.rom_header.title.trim_end_matches('\0')
-        )) {
+        let data = match std::fs::read(mbc::save_path(&self.rom_header)) {
             Ok(data) => data,
             Err(_) => return Err(GBError::LoadError),
         };
@@ -44,10 +41,7 @@ impl Mbc for MBC1 {
             }
         }
         log::info!("Saving Game");
-        match std::fs::write(
-            format!("{}.sav", self.rom_header.title.trim_end_matches('\0')),
-            save_data.as_slice(),
-        ) {
+        match std::fs::write(mbc::save_path(&self.rom_header), save_data.as_slice()) {
             Ok(_) => Ok(()),
             Err(_) => Err(GBError::SaveError),
         }
