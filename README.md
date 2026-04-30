@@ -4,6 +4,15 @@
 
 ## Special Thanks to Flavourtown (and Hackclub) for pushing me to complete this project, without them it wouldn't have even gotten past a basic SM83 emulator
 
+## Showcase
+
+
+https://github.com/user-attachments/assets/ba80226f-757b-419c-bceb-199a040d683e
+
+
+
+
+
 ## Usage
 1. Install SDL3 from your package manager
 - Ubuntu/Debian `sudo apt install libsdl3-dev`
