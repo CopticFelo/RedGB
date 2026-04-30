@@ -57,17 +57,24 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
     let ppu = PPU::default();
     let mut time = Instant::now();
     let target = Duration::new(0, 16666667);
-    let audio_sys = sdl_bus.audio().expect("Error: Could not init audio");
+    let audio_sys = sdl_bus.audio();
     let audio_buf = HeapRb::<f32>::new(2048);
     let (prod, cons) = audio_buf.split();
     let callback_struct = buffer::AudioBuffer { buffer: cons };
-    let device = audio_sys
-        .open_playback_stream(&AUDIO_SPEC, callback_struct)
-        .expect("Error: Could not open audio device");
+    let device = if let Ok(audio) = audio_sys {
+        let audio_device = audio.open_playback_stream(&AUDIO_SPEC, callback_struct);
+        if let Ok(device) = audio_device {
+            let _ = device.resume();
+            Some(device)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
     let mut bus = Bus::init(registers, memory, ppu, prod);
     bus.apu.tick(&bus.memory);
     bus.memory.io[0x0] = 255;
-    device.resume().expect("Error: couldn't start playback");
     loop {
         SM83::step(&mut bus)?;
         if time.elapsed() < target {
@@ -83,7 +90,9 @@ pub fn init_emulation(rom: Vec<u8>, header_data: ROMInfo) -> Result<(), GBError>
                     keycode: Some(Keycode::Escape),
                     ..
                 } => {
-                    device.pause();
+                    if let Some(aud_dev) = device {
+                        let _ = aud_dev.pause();
+                    }
                     info!("Cycle count: {}", &bus.t_cycles);
                     info!("CPU {:#?}", &bus.registers);
                     info!("Audio: {:#?}", &bus.memory.io[0x10..=0x26]);
