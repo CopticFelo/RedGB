@@ -17,6 +17,7 @@ cd RedGB
 cargo run -r -- path/to/rom.gb
 ```
 Or (if you can run them) you can try the release builds (you would probably still need SDL3 from your package manager)
+### (Note: On MacOS after clicking on the executable .app it will show a "RedGB not opened" error, you need to System Settings > Privacy and Security, and scroll down till you find "RedGB was blocked to protect your mac" and click open anyways, this is because the app is not notarized and i don't have an apple dev account :<)
 
 ## Controls
 | Keyboard | Original Gameboy |
