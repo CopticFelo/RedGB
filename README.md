@@ -1,5 +1,7 @@
 # RedGB
 ### A GB emulator made in Rust
+[![AI:0 ZERO](https://img.shields.io/badge/AI-ZERO-grey?style=flat&logoSize=auto&labelColor=13171f)](https://0rwx.com)
+
 #### (I know this was made before but i made my own just for fun/learning)
 
 ## Special Thanks to Flavourtown (and Hackclub) for pushing me to complete this project, without them it wouldn't have even gotten past a basic SM83 emulator
